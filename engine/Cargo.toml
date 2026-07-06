@@ -1,0 +1,70 @@
+[package]
+name = "stages-thermo"
+description = "Staged-separation (distillation) column solver: McCabe–Thiele, Ponchon–Savarit, FUG shortcut, and rigorous MESH methods, built on vle-thermo"
+readme = "README.md"
+keywords = ["distillation", "separation", "chemical-engineering", "mesh", "column"]
+categories = ["science", "mathematics"]
+documentation = "https://docs.rs/stages-thermo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+# The `cdylib` artifact is what maturin packages into the Python wheel as
+# `stages/_engine.*.{so,dylib,pyd}`; the `rlib` artifact is what downstream
+# Rust crates link against via `cargo add stages-thermo`.
+name = "stages_thermo"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The entire thermodynamic layer (K-values, enthalpies, derivatives, flashes)
+# comes from vle-thermo — stages-thermo adds NO thermo of its own (PLAN §1).
+# Pinned to the published minor version on crates.io; for local co-development
+# a git-ignored `.cargo/config.toml` can `[patch.crates-io]` it to a path
+# (PLAN §3). CI always builds against the published crate.
+vle-thermo = "0.8"
+# Dense linear algebra for the (2C+1)×(2C+1) block-tridiagonal Jacobian blocks
+# (M8). Same major version vle uses.
+nalgebra = "0.33"
+# Dual-number automatic differentiation for any derivative not yet analytic in
+# vle-thermo (the FD-interim → analytic story, PLAN §7). Kept default-features
+# off and pinned to the newest release compatible with rust-version 1.85.
+num-dual = { version = "0.11", default-features = false }
+# Stack-allocated small vectors for per-stage composition arrays — mixtures up
+# to 8 components never touch the heap (PLAN §8 hot-path discipline).
+smallvec = "1"
+thiserror = "1"
+# `abi3-py310` builds against CPython's stable ABI starting at 3.10: one wheel
+# per (OS, arch) loads on 3.10–3.13 and any future 3.x. Gated behind the
+# `python` feature.
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py310"], optional = true }
+# rust-numpy: zero-copy ndarray views for the batch API (M10). Version tracks
+# pyo3 (0.22 ↔ 0.22).
+numpy = { version = "0.22", optional = true }
+# rayon: data-parallel batch kernels (M10). The GIL is released via
+# `Python::allow_threads` around the rayon loops. Gated behind `python` so the
+# pure-Rust crate stays single-threaded.
+rayon = { version = "1", optional = true }
+
+[dev-dependencies]
+approx = "0.5"
+# criterion drives the benchmark suite (engine/benches/), added from M6.
+# Kept as a dev-dependency so it never enters the published crate's dependency
+# closure. `html_reports` is off: CI consumes the plain-text output.
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+# `harness = false` hands `cargo bench` over to criterion's own runner.
+[[bench]]
+name = "engine_bench"
+harness = false
+
+[features]
+default = []
+# Gate all PyO3 bindings behind this feature so `cargo add stages-thermo` pulls
+# a pure-Rust crate without dragging in Python. Maturin enables it
+# automatically from python/pyproject.toml when building the wheel.
+python = ["dep:pyo3", "dep:numpy", "dep:rayon"]

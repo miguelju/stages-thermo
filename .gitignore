@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Rust
+# Match any `target/` directory anywhere in the tree — covers the workspace
+# root (`/target/`), the engine crate (`/engine/target/`), and anything
+# maturin creates under `python/target/` during a wheel build.
+**/target/
+**/*.dSYM/
+**/*.rs.bk
+Cargo.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local co-development patch of vle-thermo (see PLAN §3): a git-ignored
+# .cargo/config.toml can [patch.crates-io] vle-thermo to a local path.
+# CI always builds against the published crate.
+.cargo/config.toml
+
+# Claude Code
+.claude/
+!.claude/settings.json
+
+# Secrets (belt-and-suspenders; this repo carries no infra)
+*.pem
+*.key

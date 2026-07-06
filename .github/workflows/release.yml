@@ -1,0 +1,252 @@
+# Release workflow: triggered when a tag matching `v*` is pushed.
+#
+# Jobs:
+#   check-already-published - probe PyPI / crates.io / GitHub Releases so a
+#                     re-run skips already-published targets (idempotent release)
+#   build-wheels    - cibuildwheel matrix across (OS, arch), GitHub-hosted
+#   build-sdist     - maturin sdist
+#   publish-pypi    - PyPI Trusted Publishing (OIDC, no token; env: pypi)
+#   publish-crates  - cargo publish stages-thermo (token from 1Password; env: crates-io)
+#   gh-release      - GitHub Release with all wheels + sdist
+#
+# Idempotency (global CI philosophy §2): re-running a release is normal. Each
+# publish job gates on the check-already-published probe so a partial failure
+# (PyPI ok, crates.io failed) can be re-run to finish without hitting
+# "version already exists". Uses `!failure() && !cancelled()` semantics via the
+# always()-guarded `if:` on build.
+#
+# Single crate: unlike vle (vle-units + vle-thermo), stages-thermo publishes
+# exactly one crate. crates.io reuses vle-units transitively through vle-thermo.
+#
+# Every third-party action is SHA-pinned. See PUBLISHING.md for the one-time
+# PyPI Trusted Publisher + 1Password vault setup this workflow expects.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip publish-* (build-only smoke test)"
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-already-published:
+    name: check what's already published
+    if: ${{ inputs.dry_run != true }}
+    runs-on: ubuntu-latest
+    outputs:
+      pypi_published:   ${{ steps.check.outputs.pypi_published }}
+      crates_published: ${{ steps.check.outputs.crates_published }}
+      release_exists:   ${{ steps.check.outputs.release_exists }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          echo "Probing for tag=${TAG} version=${VERSION}"
+
+          if curl -sf -o /dev/null "https://pypi.org/pypi/stages-thermo/${VERSION}/json"; then
+            echo "  ✓ stages-thermo ${VERSION} already on PyPI"
+            echo "pypi_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pypi_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # crates.io rejects requests without a User-Agent (HTTP 403), so the
+          # `-A` flag is load-bearing: a UA-less probe always reports "not
+          # published" and re-runs `cargo publish` on an existing version.
+          CRATES_UA="stages-thermo-ci (https://github.com/${GITHUB_REPOSITORY})"
+          if curl -sf -A "${CRATES_UA}" -o /dev/null "https://crates.io/api/v1/crates/stages-thermo/${VERSION}"; then
+            echo "  ✓ stages-thermo ${VERSION} already on crates.io"
+            echo "crates_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "crates_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "  ✓ GitHub Release ${TAG} already exists"
+            echo "release_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-wheels:
+    name: build wheels (${{ matrix.name }})
+    needs: [check-already-published]
+    # Build when it's a dry-run smoke test, or when any publish/release target
+    # still needs the artifacts. always() so this evaluates even when
+    # check-already-published is skipped (dry-run → empty outputs → build runs).
+    if: >-
+      ${{ always() && (
+        inputs.dry_run == true
+        || needs.check-already-published.outputs.pypi_published != 'true'
+        || needs.check-already-published.outputs.release_exists != 'true'
+      ) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            runs-on: ubuntu-latest
+          - name: linux-aarch64
+            runs-on: ubuntu-24.04-arm
+          - name: macos-arm64
+            runs-on: macos-14
+          - name: windows-amd64
+            runs-on: windows-latest
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          persist-credentials: false
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable @ 2026-05-24
+      # Pin setup-python at a SHA so the outer cibuildwheel driver is
+      # reproducible and visible to the SHA-pinning policy, then invoke
+      # cibuildwheel directly — the pypa/cibuildwheel composite action
+      # internally references setup-python@v5 *by tag*, which the repo-level
+      # sha_pinning_required policy would reject.
+      - name: Install Python (cibuildwheel driver)
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: '3.12'
+      - name: Build wheels via cibuildwheel
+        run: |
+          python -m pip install 'cibuildwheel==2.21.3'
+          python -m cibuildwheel --output-dir wheelhouse python
+      - name: Upload wheels
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
+        with:
+          name: wheels-${{ matrix.name }}
+          path: wheelhouse/*.whl
+
+  build-sdist:
+    name: build sdist
+    needs: [check-already-published]
+    if: >-
+      ${{ always() && (
+        inputs.dry_run == true
+        || needs.check-already-published.outputs.pypi_published != 'true'
+        || needs.check-already-published.outputs.release_exists != 'true'
+      ) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: '3.12'
+      - name: Install maturin
+        run: pip install "maturin>=1.5,<2"
+      - name: Build sdist
+        working-directory: python
+        run: maturin sdist --out ../dist
+      - name: Upload sdist
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+
+  publish-pypi:
+    name: publish to PyPI
+    needs: [build-wheels, build-sdist, check-already-published]
+    if: ${{ inputs.dry_run != true && needs.check-already-published.outputs.pypi_published != 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/stages-thermo/
+    permissions:
+      id-token: write   # OIDC for PyPI Trusted Publishing
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          path: dist
+          pattern: "wheels-*"
+          merge-multiple: true
+      - name: Download sdist artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: sdist
+          path: dist
+      - name: List collected artifacts
+        run: ls -la dist
+      - name: Publish to PyPI (Trusted Publishing, OIDC)
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
+        with:
+          packages-dir: dist
+          # No `password:` — Trusted Publishing reads the OIDC token from
+          # id-token: write above. PyPI must have a Trusted Publisher for
+          # miguelju/stages-thermo + release.yml + env pypi (see PUBLISHING.md).
+
+  publish-crates:
+    name: publish to crates.io
+    needs: [build-wheels, check-already-published]
+    if: ${{ inputs.dry_run != true && needs.check-already-published.outputs.crates_published != 'true' }}
+    runs-on: ubuntu-latest
+    # The `crates-io` Environment is configured with Miguel as a required
+    # reviewer, so every publish pauses for a human click. crates.io versions
+    # are immutable — this gate is the last chance to catch a wrong version.
+    environment:
+      name: crates-io
+      url: https://crates.io/crates/stages-thermo
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          persist-credentials: false
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable @ 2026-05-24
+      - name: Load crates.io token from 1Password
+        uses: 1password/load-secrets-action@92467eb28f72e8255933372f1e0707c567ce2259  # v4.0.0
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          CARGO_REGISTRY_TOKEN: op://stages-thermo-ci/crates-io/token
+      - name: cargo publish stages-thermo
+        # --no-verify: the wheels were already built/tested in build-wheels.
+        run: cargo publish -p stages-thermo --no-verify
+
+  gh-release:
+    name: create GitHub Release
+    needs: [build-wheels, build-sdist, check-already-published]
+    if: ${{ inputs.dry_run != true && needs.check-already-published.outputs.release_exists != 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # for softprops/action-gh-release to create the release
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          path: artifacts
+      - name: Flatten artifacts into dist/
+        run: |
+          mkdir -p dist
+          find artifacts -name '*.whl' -exec cp {} dist/ \;
+          find artifacts -name '*.tar.gz' -exec cp {} dist/ \;
+          ls -la dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

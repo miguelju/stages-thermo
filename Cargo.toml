@@ -1,0 +1,42 @@
+# Cargo workspace manifest.
+#
+# Declares the publishable Rust crate(s) in this repo as workspace members so
+# that `cargo build`, `cargo test`, and `cargo publish -p <name>` can be
+# invoked from the repo root. Today there is exactly one member (`engine`,
+# published as `stages-thermo`); unlike vle there is no sibling `units` crate —
+# stages-thermo reuses `vle-units` transitively through its `vle-thermo`
+# dependency (PLAN §6).
+#
+# Shared metadata (version, license, author, repository) lives under
+# [workspace.package] and is inherited by each member's Cargo.toml via
+# `<field>.workspace = true`. Bump the version here to release a new version.
+
+[workspace]
+resolver = "2"
+members = ["engine"]
+
+# Release profile: fat LTO + single codegen unit let LLVM inline across crate
+# boundaries (the block-Thomas kernel and the per-stage thermo calls benefit
+# most). `panic = "abort"` is deliberately NOT set — PyO3 needs unwinding to
+# convert Rust panics into Python exceptions instead of aborting the host
+# interpreter. Wheels stay portable: no target-cpu=native. (Same rationale as
+# vle; see PLAN §3.)
+[profile.release]
+lto = "fat"
+codegen-units = 1
+
+# The bench profile inherits `release`, so criterion numbers measure the same
+# optimization level users get from the published crate/wheel.
+[profile.bench]
+inherits = "release"
+
+[workspace.package]
+# 0.0.1 = the name-holding stub registered on crates.io + PyPI at M0. Real
+# functionality starts landing at M1 (McCabe–Thiele); 1.0.0 is M10.
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+authors = ["Miguel Jackson <admin@migueljackson.dev>"]
+repository = "https://github.com/miguelju/stages-thermo"
+homepage = "https://github.com/miguelju/stages-thermo"

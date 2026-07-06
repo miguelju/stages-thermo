@@ -1,0 +1,115 @@
+# CI workflow: every push to main, every PR, and manual dispatch.
+#
+# Jobs:
+#   lint-rust : cargo fmt + clippy (ubuntu-latest)
+#   test-rust : cargo test --workspace --all-targets (ubuntu-latest)
+#   wheel     : maturin build + pytest against the installed wheel
+#               (ubuntu-latest, single-platform smoke; the full (OS, arch)
+#               cibuildwheel matrix lives in release.yml)
+#
+# Divergence from vle: vle runs test/bench on self-hosted lab runners; this
+# repo has no runner infrastructure yet, so CI uses GitHub-hosted runners and
+# is self-contained out of the box. Every third-party action is SHA-pinned
+# (org/name@<40-char SHA> # vX.Y) so `sha_pinning_required: true` passes. This
+# file lists itself under paths so a typo in it re-triggers CI (self-test).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+    # paths-ignore lists directories whose changes can't affect a Rust
+    # compile, the wheel contents, or the tests. A commit touching *only*
+    # these paths skips CI. Note: '**/*.md' matches markdown anywhere (GitHub's
+    # '*.md' would only match root-level — see the global CI philosophy note).
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'notebooks/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'notebooks/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint-rust:
+    name: lint (fmt + clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          # No job here pushes, so drop the GITHUB_TOKEN from .git/config
+          # (belt-and-suspenders against a later step re-using it).
+          persist-credentials: false
+      - name: Install stable Rust + components
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable @ 2026-05-24
+        with:
+          components: rustfmt, clippy
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+      - name: cargo clippy
+        # `-D warnings` turns every clippy warning into an error. Default
+        # features only (no `python`): the local/CI pyo3 + clippy interaction
+        # across #[pyfunction] is a toolchain issue, not our code.
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test-rust:
+    name: test (cargo test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          persist-credentials: false
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable @ 2026-05-24
+      - name: Cache cargo
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-test-${{ hashFiles('**/Cargo.toml') }}
+      - name: cargo test
+        run: cargo test --workspace --all-targets
+
+  wheel:
+    name: wheel (build + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          persist-credentials: false
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable @ 2026-05-24
+      - name: Install Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6
+        with:
+          python-version: '3.12'
+      - name: Install maturin
+        run: pip install "maturin>=1.5,<2"
+      - name: Build wheel
+        # Build from python/ so maturin reads python/pyproject.toml — that's
+        # what carries python-source=src (the `stages` package) and
+        # module-name=stages._engine. Building against engine/Cargo.toml
+        # directly would produce a bare extension with no `stages` package.
+        working-directory: python
+        run: maturin build --out ../dist
+      - name: Install wheel + pytest, then run tests
+        # Install the freshly built wheel (pulls vle-thermo + numpy from PyPI),
+        # then run the Python smoke tests from a neutral dir so the *installed*
+        # package is exercised, not the source tree.
+        run: |
+          pip install pytest
+          pip install --find-links dist stages-thermo
+          cd "$RUNNER_TEMP" && pytest "$GITHUB_WORKSPACE/python/tests" -q
