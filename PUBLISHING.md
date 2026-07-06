@@ -71,22 +71,15 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 
 ## Name-holding stubs (Milestone 0)
 
-Before any real release, `0.0.1` stubs are registered on **both** registries to
-hold the `stages-thermo` name (PLAN §2, §11). This is a one-time manual publish,
-not a tagged release:
-
-```sh
-# crates.io — needs a login token (crates.io → Account Settings → API Tokens)
-cargo publish -p stages-thermo            # from the workspace root
-# (add --dry-run first to sanity-check the packaged files)
-
-# PyPI — build the sdist + one wheel and upload with twine (needs a PyPI token)
-cd python && maturin sdist --out ../dist
-twine upload ../dist/*
-```
+The `0.0.1` stubs hold the `stages-thermo` name on **both** registries (PLAN §2,
+§11). **Prerequisite:** the credentials + pending publisher in "Credentials &
+1Password vault" below must exist first. Then publish via **Route A** (the
+tagged-release pipeline — token-free for PyPI, and the cleanest way to convert
+the PyPI pending publisher) or **Route B** (manual crates.io only). Both are
+spelled out at the end of this document.
 
 crates.io + PyPI versions are **immutable** — `0.0.1` is spent once uploaded.
-Double-check the version before pushing either.
+Double-check the version before publishing either.
 
 ---
 
@@ -117,29 +110,80 @@ request). Same "cannot truly delete" rule — yank + patch.
 
 ---
 
-## One-time setup (do once, then document as done)
+## Credentials & 1Password vault (one-time, do this first)
 
-### PyPI Trusted Publishing
-At <https://pypi.org/manage/account/publishing/>, add a Trusted Publisher for
-project `stages-thermo` pointing at:
-- Owner: `miguelju`
-- Repository: `stages-thermo`
-- Workflow: `release.yml`
-- Environment: `pypi`
+> **Do NOT reuse the `vle-thermo-ci` vault or its `crates-io` token.** That
+> crates.io token is **scoped to the vle crates** (`vle-thermo`, `vle-units`)
+> and returns **HTTP 403** on a new crate name like `stages-thermo`. This
+> project gets its **own** vault and its **own** credentials.
 
-No API token needed thereafter. (For the very first `0.0.1` stub, PyPI's
-"pending publisher" flow or a one-off token upload is fine, since the project
-doesn't exist yet.)
+**PyPI needs no token at all** — Miguel publishes via **Trusted Publishing
+(OIDC)**, the same as vle. crates.io is still token-based, so that one token is
+the only registry secret we store.
 
-### crates.io token (1Password)
-1. Create a token at <https://crates.io/settings/tokens> scoped to
-   `publish-new` + `publish-update` for `stages-thermo`.
-2. Store it in 1Password at `stages-thermo-ci/crates-io/token`.
-3. The release workflow loads it via `1password/load-secrets-action` using the
-   single GitHub secret `OP_SERVICE_ACCOUNT_TOKEN` (a read-only service account
-   on the `stages-thermo-ci` vault). This is the **only** GitHub-side secret.
+### 1. New 1Password vault + crates.io token
 
-### GitHub Environments
-- `pypi` — for the OIDC publish (add required reviewers if desired).
-- `crates-io` — add Miguel as a required reviewer so every crate publish pauses
-  for a human click (crates.io versions are immutable).
+1. Create a 1Password vault **`stages-thermo-ci`** (mirrors `vle-thermo-ci`; a
+   separate vault keeps each project's publish token isolated).
+2. Create a crates.io token at <https://crates.io/settings/tokens>:
+   - Scopes: **`publish-new`** + **`publish-update`**.
+   - Crate scope: restrict to **`stages-thermo`** (or leave unscoped). It must
+     allow **publish-new** or the very first `0.0.1` upload 403s.
+3. Store it in the new vault as item **`crates-io`**, field **`token`** →
+   reference `op://stages-thermo-ci/crates-io/token` (this is exactly what
+   `release.yml` reads).
+4. For CI, create/attach a **read-only service account** on the
+   `stages-thermo-ci` vault and put its token in the GitHub repo secret
+   **`OP_SERVICE_ACCOUNT_TOKEN`** — the **only** GitHub-side secret. (For a
+   local manual publish, `op read op://stages-thermo-ci/crates-io/token` is
+   enough; no service account required.)
+
+### 2. PyPI Trusted Publisher (no token — OIDC)
+
+Because the `stages-thermo` project **does not exist on PyPI yet**, register a
+**pending** publisher (under your *account*, not a project, since there's no
+project to attach to). At
+<https://pypi.org/manage/account/publishing/> → "Add a pending publisher":
+
+- **PyPI Project Name:** `stages-thermo`
+- **Owner:** `miguelju`
+- **Repository name:** `stages-thermo`
+- **Workflow name:** `release.yml`
+- **Environment name:** `pypi`
+
+On the first successful OIDC publish the pending publisher **auto-converts to a
+normal publisher** and creates the project — no token, ever. ⚠️ **Caveat:** if
+anyone else registers the name `stages-thermo` on PyPI before your first
+publish, the pending publisher is invalidated — so register it and cut the
+`v0.0.1` release promptly. (Ref: PyPI docs, "Creating a PyPI Project with a
+Trusted Publisher".)
+
+### 3. GitHub Environments (in the repo settings)
+
+- **`pypi`** — for the OIDC publish (matches the pending-publisher config above;
+  add required reviewers if desired).
+- **`crates-io`** — add Miguel as a required reviewer so every crate publish
+  pauses for a human click (crates.io versions are immutable).
+
+---
+
+## Publishing the 0.0.1 name-holding stub — the two routes
+
+Once the vault + token (crates.io) and pending publisher (PyPI) exist:
+
+**Route A — the real pipeline (recommended, token-free for PyPI):** create the
+GitHub repo, push, set up the two environments, then `git tag v0.0.1 && git push
+origin v0.0.1`. `release.yml` builds the wheels and publishes to **both**
+registries (PyPI via OIDC, crates.io via the vault token). This is also the
+end-to-end CI smoke test.
+
+**Route B — manual (crates.io only; faster for just holding the name):**
+```sh
+# crates.io — token from the new vault, never printed:
+CARGO_REGISTRY_TOKEN="$(op read op://stages-thermo-ci/crates-io/token)" \
+  cargo publish -p stages-thermo --allow-dirty
+```
+PyPI has no manual token route in this setup — use Route A (a tagged release, or
+a `workflow_dispatch` run with `dry_run=false`) so the pending publisher
+converts. If you ever need a truly manual PyPI upload, mint a one-off
+account-scoped token, but that's off the standard path.
