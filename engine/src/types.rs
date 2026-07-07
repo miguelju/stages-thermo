@@ -28,6 +28,13 @@ pub enum StagesError {
     /// An iterative solver failed to converge within its iteration budget.
     #[error("solver did not converge: {0}")]
     Convergence(String),
+
+    /// The specification cannot be met by any operating condition — e.g. a
+    /// distillate purity beyond an azeotrope, reachable at no reflux ratio.
+    /// Distinct from [`StagesError::Convergence`]: a convergence failure
+    /// might yield to a better solver or seed; an infeasible spec never will.
+    #[error("specification is infeasible: {0}")]
+    Infeasible(String),
 }
 
 /// Convenience alias for fallible engine operations.

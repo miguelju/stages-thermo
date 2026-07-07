@@ -33,7 +33,7 @@ inherits = "release"
 [workspace.package]
 # 0.0.1 = the name-holding stub registered on crates.io + PyPI at M0. Real
 # functionality starts landing at M1 (McCabe–Thiele); 1.0.0 is M10.
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"

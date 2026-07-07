@@ -8,31 +8,34 @@ M1–M12 lists derive from the deliverables in PLAN.md §10.
 
 ---
 
-## Milestone 0: Repo Bootstrap *(4–6 h)*
+## Milestone 0: Repo Bootstrap *(4–6 h)* — **complete**
 *Executed by Claude Code using Claude Opus 4.8 (1M context)*
 
-- [ ] **Create the repo** — `gh repo create miguelju/stages-thermo` (private initially?), MIT LICENSE, `.gitignore` (Rust + Python + Jupyter)
-- [ ] **Cargo workspace + `engine/` skeleton** — compiling against crates.io `vle-thermo = "0.8"` with a smoke test (bubble T of methanol–water matches vle's known value)
-- [ ] **`python/` maturin skeleton** — `import stages; stages.__version__` wheel test
-- [ ] **Split PLAN → ROADMAP.md / TODO.md / CLAUDE.md / README.md**
-- [ ] **CI** — `ci.yml` (fmt + clippy, cargo test, wheel build + pytest; paths-filtered, `**/*.md` ignore), `release.yml` (tag-triggered, registry probes → gated idempotent publish); all actions SHA-pinned; workflow self-test paths
-- [ ] **Publish 0.0.1 name-holding stubs** to PyPI + crates.io
-- [ ] **Rulesets** (4-pattern) + `sha_pinning_required` + repo pre-push hooks (`core.hooksPath hooks`; fmt gate; private-data gate probably unneeded — no infra in this repo — but keep the placeholder-only rule)
-- [ ] **Create `stages` conda env** — document the absolute-path binary rule
-- [ ] **Project memory dir** for Claude sessions in the new repo slug
+- [✓] **Create the repo** — `gh repo create miguelju/stages-thermo` (private initially?), MIT LICENSE, `.gitignore` (Rust + Python + Jupyter)
+- [✓] **Cargo workspace + `engine/` skeleton** — compiling against crates.io `vle-thermo = "0.8"` with a smoke test (bubble T of methanol–water matches vle's known value)
+- [✓] **`python/` maturin skeleton** — `import stages; stages.__version__` wheel test
+- [✓] **Split PLAN → ROADMAP.md / TODO.md / CLAUDE.md / README.md**
+- [✓] **CI** — `ci.yml` (fmt + clippy, cargo test, wheel build + pytest; paths-filtered, `**/*.md` ignore), `release.yml` (tag-triggered, registry probes → gated idempotent publish); all actions SHA-pinned; workflow self-test paths
+- [✓] **Publish 0.0.1 name-holding stubs** to PyPI + crates.io
+- [✓] **Rulesets** (4-pattern) + `sha_pinning_required` + repo pre-push hooks (`core.hooksPath hooks`; fmt gate; private-data gate probably unneeded — no infra in this repo — but keep the placeholder-only rule)
+- [✓] **Create `stages` conda env** — document the absolute-path binary rule
+- [✓] **Project memory dir** for Claude sessions in the new repo slug
 
-## Milestone 1: Column Model + McCabe–Thiele *(14–20 h)*
+## Milestone 1: Column Model + McCabe–Thiele *(14–20 h)* — **complete**
+*Executed by Claude Code using Claude Fable 5*
 
-Binary-sufficient column model plus the full McCabe–Thiele method. Needs the
-tiny vle-thermo component-DB PR (toluene + ethanol) first.
+Binary-sufficient column model plus the full McCabe–Thiele method. The
+component-DB prerequisite (toluene + ethanol) landed upstream via M4
+(vle-thermo 0.9.x, `component-db` feature) before this milestone started, so
+the separate tiny PR was unnecessary.
 
-- [ ] **`column/model.rs` (binary subset)** (~3–4h) — `Column`, `Stage`, `Feed`, condenser kind, single-pressure sufficient for binary
-- [ ] **`binary/equilibrium.rs`** (~2–3h) — y*(x) curve generation via vle-thermo `bubble_temperature`/`bubble_pressure`
-- [ ] **`binary/mccabe_thiele.rs`** (~4–6h) — operating lines, q-line, stage stepping, pinch, Rmin, N(R), Murphree efficiency, total-reflux
-- [ ] **Rmin via pinch detection** (~2h) — tangent pinches included
-- [ ] **Staircase plotting** (~2h) — `plotting.py` staircase diagram
-- [ ] **Upstream component-DB PR** (~1h) — toluene + ethanol into vle-thermo (blocks the benzene–toluene case)
-- [ ] **📓 `01-mccabe-thiele.ipynb`** (~2–3h) — benzene–toluene (PR EOS), methanol–water (van Laar, ties to vle Ch. IV); per CLAUDE.md *Notebook Conventions*
+- [✓] **`column/model.rs` (binary subset)** (~3–4h) — `BinaryColumn`, `Feed`, `CondenserKind`, single pressure, material-balance product rates (the full multicomponent `Column`/`Stage` arrives at M5)
+- [✓] **`binary/equilibrium.rs`** (~2–3h) — y*(x) curve generation via vle-thermo `bubble_temperature`/`bubble_pressure`; `constant_alpha` + `from_points` constructors (analytic test oracle / literature data)
+- [✓] **`binary/mccabe_thiele.rs`** (~4–6h) — operating lines, q-line, stage stepping, pinch, Rmin, N(R), Murphree efficiency, total-reflux
+- [✓] **Rmin via pinch detection** (~2h) — tangent pinches included (both sections; rectifying max-slope + stripping min-slope converted through the feed-section balances)
+- [✓] **Staircase plotting** (~2h) — `plotting.py` staircase + total-reflux diagrams
+- [✓] **Upstream component DB** (~1h) — superseded by M4: vle-thermo 0.9.x ships the 24-compound Rust DB (toluene, ethanol, benzene, … with `cp_coeffs`); engine dep bumped to `vle-thermo = "0.9"` + `component-db`
+- [✓] **📓 `01-mccabe-thiele.ipynb`** (~2–3h) — benzene–toluene (PR EOS), methanol–water (van Laar, ties to vle Ch. IV via Table 4.6); 3 exercises with hidden solutions; pinned assertions; executes top-to-bottom
 
 ## Milestone 2: Ponchon–Savarit *(10–14 h)*
 
@@ -56,17 +59,19 @@ Fenske–Underwood–Gilliland–Kirkbride–Winn, orchestrated into a design fu
 - [ ] **`shortcut/fug.rs`** (~2–3h) — orchestrated FUG(K) design: specs → (N, feed stage, R, splits)
 - [ ] **📓 `03-shortcut-design.ipynb`** (~2–3h) — depropanizer design, FUG vs (later) rigorous comparison teaser
 
-## Milestone 4: Upstream — vle-thermo Derivative Release (0.9.x) *(12–18 h)*
+## Milestone 4: Upstream — vle-thermo Derivative Release (0.9.x) *(12–18 h)* — **complete**
 
-Executed in the **vle repo** under its own rules (this is vle's Milestone 12).
-Can start any time; **must precede M8**. Full task detail lives in vle's
+Executed in the **vle repo** under its own rules (this is vle's Milestone 12;
+see that repo's tracking docs for the execution record). Landed as vle-thermo
+**v0.9.0/v0.9.1, published on crates.io + PyPI** — before stages-thermo M1, so
+M1 built directly on the new DB. Full task detail lives in vle's
 `DERIVATIVE_RELEASE_PLAN.md` / `TODO.md`; the stages-thermo-facing deliverables:
 
-- [ ] **Analytic/dual ∂lnφ/∂T, ∂lnφ/∂P** → `k_values_with_derivs`
-- [ ] **Real-mixture Cp (∂H/∂T) + partial-molar ∂H/∂n** via `num-dual` over the generic `mixture_params`
-- [ ] **Packaged γ-φ `phase_enthalpy_entropy`**
-- [ ] **Rust-side component DB** with `cp_coeffs` + the new components (toluene, ethanol, acetone, chloroform, isobutane, isopentane, n-octane, n-nonane, n-decane)
-- [ ] **PyO3 bindings + tests** per vle's M5+ rule; publish vle-thermo 0.9.x
+- [✓] **Analytic/dual ∂lnφ/∂T, ∂lnφ/∂P** → `k_values_with_derivs`
+- [✓] **Real-mixture Cp (∂H/∂T) + partial-molar ∂H/∂n** via `num-dual` over the generic `mixture_params`
+- [✓] **Packaged γ-φ `phase_enthalpy_entropy`**
+- [✓] **Rust-side component DB** (`component-db` feature, 24 compounds) with `cp_coeffs` + the new components (toluene, ethanol, acetone, chloroform, isobutane, isopentane, n-octane, n-nonane, n-decane)
+- [✓] **PyO3 bindings + tests** per vle's M5+ rule; published (v0.9.1 current, incl. the Wong–Sandler departure-enthalpy patch)
 
 ## Milestone 5: MESH Infrastructure *(10–14 h)*
 
@@ -158,11 +163,11 @@ A thin server (likely Python package `stages-mcp`) over the §8 granular API.
 
 | Milestone | Est. | Status |
 |-----------|------|--------|
-| 0. Repo Bootstrap | ~4–6h | **In progress** |
-| 1. Column Model + McCabe–Thiele | ~14–20h | Not started |
+| 0. Repo Bootstrap | ~4–6h | **Complete** |
+| 1. Column Model + McCabe–Thiele | ~14–20h | **Complete** (v0.1.0) |
 | 2. Ponchon–Savarit | ~10–14h | Not started |
 | 3. FUG Shortcut | ~12–16h | Not started |
-| 4. Upstream vle-thermo Derivative Release (0.9.x) | ~12–18h | Not started *(in the vle repo; must precede M8)* |
+| 4. Upstream vle-thermo Derivative Release (0.9.x) | ~12–18h | **Complete** *(in the vle repo; vle-thermo v0.9.1 published)* |
 | 5. MESH Infrastructure | ~10–14h | Not started |
 | 6. Wang–Henke Bubble-Point | ~12–16h | Not started |
 | 7. Sum-Rates | ~8–12h | Not started |

@@ -4,9 +4,11 @@ A staged-separation (distillation) learning library and fast steady-state column
 solver, built on [`vle-thermo`](https://pypi.org/project/vle-thermo/). Rust core,
 Python bindings, executable notebooks.
 
-> **Early-stage.** Only the Milestone 0 bootstrap scaffolding exists today. The
-> methods below describe the planned library — see **[Status](#status)** and
-> [ROADMAP.md](ROADMAP.md).
+> **Early-stage, first rung live.** v0.1.0 ships the McCabe–Thiele layer
+> (Milestone 1): real-thermo equilibrium curves, the full graphical
+> construction with tangent-pinch R_min detection, and the executable
+> `01-mccabe-thiele.ipynb`. Later rungs are still planned — see
+> **[Status](#status)** and [ROADMAP.md](ROADMAP.md).
 
 ## About This Project
 
@@ -50,9 +52,9 @@ Rungs 1–3 are the "learning repo" ask; rungs 4–8 are the "solution engine" a
 
 ## Install
 
-> **Name-holding stubs only (pre-1.0).** The `0.0.1` releases below just reserve
-> the names on both registries while the library is built. Nothing is usable yet
-> — track progress in [ROADMAP.md](ROADMAP.md).
+> **Pre-1.0.** v0.1.0 is the first functional release (the McCabe–Thiele
+> binary layer). The API may still move before 1.0 — track progress in
+> [ROADMAP.md](ROADMAP.md).
 
 ### Python (PyPI)
 
@@ -74,43 +76,50 @@ cargo add stages-thermo
 ```
 
 Both track the same version and build from the same source tree. `stages-thermo`
-depends on `vle-thermo` (crates.io / PyPI, v0.8.1) for all thermodynamics.
+depends on `vle-thermo` (crates.io / PyPI, ≥ 0.9) for all thermodynamics.
 
-## Quickstart (sketch — the planned API)
+## Quickstart — rung 1, shipping today
 
-The API is designed so **every method returns a rich, inspectable result
-object**, never bare numbers:
+**Every method returns a rich, inspectable result object**, never bare numbers:
 
 ```python
 import stages
 
-# Rung 1 — McCabe–Thiele on a binary, thermo from vle-thermo.
-mt = stages.mccabe_thiele(["benzene", "toluene"], x_feed=0.5, reflux=1.5, eos="PR")
-print(mt.n_stages, mt.r_min, mt.pinch)          # result carries the curve, op lines, q-line, every (x,y) corner
+# Real thermodynamics from vle-thermo: Peng–Robinson benzene–toluene at 1 atm.
+sys = stages.ThermoSystem.peng_robinson(["benzene", "toluene"])
+curve = stages.EquilibriumCurve.from_thermo(sys, pressure=101.325)
 
-# Rung 6 — a rigorous multicomponent column (flagship Naphtali–Sandholm solver).
-col = stages.Column.debutanizer()                # multi-feed, side draws, duties, pressure profile
-sol = col.solve(spec={"reflux": 2.5, "distillate": 40.0})
-print(sol.stage(7).temperature)                  # everything about stage 7
-print(sol.mass_balance_closure())                # audit residual
-print(sol.report.iterations, sol.report.residual_history)   # open the black box
+# Minimum reflux by geometric pinch detection (tangent pinches included) …
+r = stages.rmin(curve, x_distillate=0.95, x_bottoms=0.05, z_feed=0.50, q=1.0)
 
-# The batch layer — "numpy for columns": one FFI crossing, GIL released, parallel.
-import numpy as np
-sweep = stages.solve_batch(col, reflux=np.linspace(1.2, 4.0, 500))   # N-vs-R curve in one cell
+# … and the full construction: stages, feed stage, operating lines, staircase.
+design = stages.mccabe_thiele(curve, 0.95, 0.05, 0.50, reflux=1.5 * r.r_min)
+print(f"N = {design.n_stages:.1f}, feed stage {design.feed_stage}, R_min = {r.r_min:.3f}")
+
+from stages import plotting
+plotting.plot_mccabe_thiele(design, curve, show_rmin=True)   # the classic diagram
 ```
 
-*(Illustrative — no code ships yet. See [ROADMAP.md](ROADMAP.md) for what exists.)*
+The same construction runs unchanged on a γ-φ activity-model curve
+(`stages.ThermoSystem.van_laar(["methanol", "water"], 0.5853, 0.3458)`), a
+constant-α idealization (`EquilibriumCurve.constant_alpha(2.5)`), or digitized
+literature data (`EquilibriumCurve.from_points(...)`) — the solvers never know
+which thermodynamics produced the curve. Later rungs (rigorous multicomponent
+columns, the batch `solve_batch` layer) follow the same rich-result design; see
+[PLAN.md](PLAN.md) §8.
 
 ## Status
 
-**Milestone 0 (repo bootstrap) is in progress; everything else is pending.** No
-solver code exists yet — only the scaffolding, CI, and these planning documents.
+**Milestones 0, 1, and 4 are complete** (v0.1.0): the McCabe–Thiele binary
+layer is live on top of vle-thermo 0.9.x, with the executable
+[`notebooks/01-mccabe-thiele.ipynb`](notebooks/01-mccabe-thiele.ipynb).
 
 | | State |
 |---|---|
-| M0 — Repo bootstrap | **In progress** (scaffold, CI, name-holding `0.0.1` stubs, docs split) |
-| M1–M10 — The ladder (McCabe–Thiele → 1.0) | Pending |
+| M0 — Repo bootstrap | **Complete** (scaffold, CI, `0.0.1` stubs, docs split) |
+| M1 — Column model + McCabe–Thiele | **Complete — v0.1.0** (equilibrium curves, R_min/pinch, stage stepping, Murphree, N(R), staircase plots, 📓 01) |
+| M4 — Upstream vle-thermo derivative release | **Complete** (vle-thermo v0.9.1: `k_values_with_derivs`, γ-φ enthalpy, 24-compound Rust DB) |
+| M2–M3, M5–M10 — The remaining ladder → 1.0 | Pending |
 | M11–M12 — Inside-out, MCP server *(stretch)* | Pending |
 
 Per-milestone detail and hour estimates: [ROADMAP.md](ROADMAP.md) and
@@ -129,10 +138,11 @@ with exact composition derivatives). stages-thermo:
   adapter");
 - reuses vle's entire proven toolchain (workspace layout, maturin build,
   cibuildwheel CI, `_batch` + rayon + GIL-release pattern, criterion benches);
-- **pressure-tests vle-thermo's public API** — gaps it surfaces (∂K/∂T, ∂H/∂T,
-  packaged γ-φ enthalpy, an expanded Rust-side component DB) feed back as a
-  dedicated vle-thermo derivative release (0.9.x), which stages-thermo's
-  Milestone 4 tracks.
+- **pressure-tests vle-thermo's public API** — the gaps it surfaced (∂K/∂T,
+  ∂H/∂T, packaged γ-φ enthalpy, an expanded Rust-side component DB) fed back
+  as vle-thermo's derivative release, **shipped as v0.9.x** (stages-thermo's
+  Milestone 4, complete); the engine now builds on `vle-thermo = "0.9"` with
+  the `component-db` feature.
 
 There is **no Rust staged-column / MESH library on crates.io** — this is
 greenfield.

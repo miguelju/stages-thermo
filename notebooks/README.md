@@ -10,7 +10,7 @@ Planned (see `ROADMAP.md` for status):
 
 | Notebook | Milestone |
 |---|---|
-| `01-mccabe-thiele.ipynb` | M1 — benzene–toluene, methanol–water |
+| [`01-mccabe-thiele.ipynb`](01-mccabe-thiele.ipynb) | **M1 — live** — benzene–toluene (PR), methanol–water (van Laar, ties to vle Ch. IV); 3 exercises |
 | `02-ponchon-savarit.ipynb` | M2 |
 | `03-shortcut-design.ipynb` | M3 — FUG depropanizer design |
 | `04-mesh-and-bubble-point.ipynb` | M6 — "how a column is actually solved," part 1 |
@@ -23,4 +23,8 @@ Planned (see `ROADMAP.md` for status):
 Notebooks drive **both** packages: `vle.System` for thermodynamics exploration
 and `stages` for columns.
 
-_(empty at M0)_
+Execute before committing (per CLAUDE.md notebook conventions):
+
+```sh
+~/miniconda3/envs/stages/bin/jupyter nbconvert --to notebook --execute --inplace notebooks/01-mccabe-thiele.ipynb
+```

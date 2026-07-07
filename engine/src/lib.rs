@@ -14,11 +14,21 @@
 //!
 //! ## Status
 //!
-//! Milestone 0 (repo bootstrap). The only computational surface today is the
-//! [`thermo`] adapter smoke path, which proves the vle-thermo dependency links
-//! and evaluates end-to-end. The method modules (`binary`, `shortcut`,
-//! `rigorous`, `numerics`, `column`) land milestone by milestone per
-//! `ROADMAP.md`; the target module tree is documented in `PLAN.md` §6.
+//! Milestone 1 (column model + McCabe–Thiele). Implemented so far:
+//!
+//! - [`thermo`] — the adapter over vle-thermo 0.9.x: [`thermo::ThermoSystem`]
+//!   with database-loaded components, φ-φ (Peng–Robinson) and γ-φ (van Laar)
+//!   routes, bubble-point evaluation.
+//! - [`column`] — the binary-sufficient column model
+//!   ([`column::BinaryColumn`], [`column::Feed`], [`column::CondenserKind`]).
+//! - [`binary`] — the equilibrium curve ([`binary::EquilibriumCurve`]) and
+//!   the full McCabe–Thiele construction ([`binary::mccabe_thiele`]):
+//!   operating lines, q-line, stage stepping, R_min with tangent-pinch
+//!   detection, total reflux (N_min), N(R), Murphree efficiency.
+//!
+//! The remaining method modules (`shortcut`, `rigorous`, `numerics`) land
+//! milestone by milestone per `ROADMAP.md`; the target module tree is
+//! documented in `PLAN.md` §6.
 //!
 //! ## Design rule (PLAN §7)
 //!
@@ -27,6 +37,8 @@
 //! inside-out inner loop, a stretch milestone) or a test mock can slot in
 //! without touching the solvers.
 
+pub mod binary;
+pub mod column;
 pub mod thermo;
 pub mod types;
 

@@ -7,6 +7,7 @@ comment (see `CLAUDE.md`, "Reference Citation Requirements").
 
 ## Core method references
 
+- **McCabe & Thiele**, *Ind. Eng. Chem.* **1925**, 17(6), 605–611. — the graphical binary method (M1).
 - **Wang & Henke**, *Hydrocarbon Process.* **1966**, 45(8), 155. — bubble-point MESH method (M6).
 - **Friday & Smith**, *AIChE J.* **1964**, 10, 698. — why bubble-point ↔ narrow-boiling, sum-rates ↔ wide-boiling.
 - **Burningham & Otto**, *Hydrocarbon Process.* **1967**, 46(10), 163. — sum-rates method for absorbers (M7).
@@ -40,8 +41,21 @@ comment (see `CLAUDE.md`, "Reference Citation Requirements").
 - **ChemSep-LITE** (free binary) — cross-validation oracle.
 - **IDAES** — the equation-oriented / IPOPT alternative; cited in docs as "the other modern approach," not built here.
 
+## Parameter sources (validation cases)
+
+- **Orbey & Sandler** (via vle Chapter IV, Tables 4.5/4.6) — methanol(1)–water(2)
+  van Laar Λ₁₂ = 0.5853, Λ₂₁ = 0.3458; the Table 4.6 bubble pressures at 298 K
+  are reproduced in `notebooks/01-mccabe-thiele.ipynb`.
+- **Perry's classic van Laar set** — ethanol(1)–water(2) A₁₂ = 1.6798,
+  A₂₁ = 0.9227 (notebook exercise 1: azeotrope + tangent pinch).
+
 ## Reference → code mapping
 
 Populated as modules land. Format: `<method>` → `engine/src/<path>` (implements `<citation>`).
 
-_(empty at M0)_
+- McCabe–Thiele construction → `engine/src/binary/mccabe_thiele.rs` (implements
+  McCabe & Thiele 1925; equations per S&H Ch. 7: 7-9, 7-12, 7-24, 7-26).
+- Equilibrium curve y*(x) → `engine/src/binary/equilibrium.rs` (bubble-point
+  sweep via vle-thermo; constant-α form S&H eq. 7-13 as test oracle).
+- Binary column balances → `engine/src/column/model.rs` (S&H eqs. 7-2/7-3).
+- Theory write-up: [`theory/mccabe-thiele.md`](theory/mccabe-thiele.md).
