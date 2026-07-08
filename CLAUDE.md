@@ -135,6 +135,61 @@ implementations may be **mimicked freely**. ChemSep-LITE (free binary) and DWSIM
 are the cross-validation oracles (run the same specs, compare numbers), which is
 license-clean regardless.
 
+## GitHub Markdown + LaTeX rendering (`docs/theory/*.md`) — load-bearing
+
+GitHub renders `$…$` / `$$…$$` with MathJax, but its **cmark-gfm markdown layer
+runs first** and mangles the input in ways a local KaTeX/MathJax check does
+**not** catch — a rendered-fine-locally equation can still show a red
+`'&' can not be used here` box or literal `$…$` source on github.com. Every
+equation in `docs/theory/` must survive *GitHub*, not just MathJax. The traps,
+all learned the hard way on `mccabe-thiele.md` (M1):
+
+1. **GitHub unescapes `\`+punctuation *before* MathJax** (`\&`→`&`, `\,`→`,`,
+   `\;`→`;`, `\!`→`!`).
+   - **Never put `&` in math — not even escaped as `\&`.** The backslash is
+     stripped, MathJax then sees a bare `&` → hard error box. Move equation
+     tags *out* of math: drop `\tag{S&H 7-13}`, cite "(S&H eq. 7-13)" in the
+     surrounding prose instead.
+   - **Avoid the spacing macros `\,` `\;` `\!`** — they silently degrade to
+     literal `,` `;` `!`. Use plain spaces (MathJax ignores them) or
+     `\quad`/`\qquad`.
+   - Backslash+**letter** commands (`\frac`, `\alpha`, `\text`, `\big`,
+     `\Rightarrow`, `\ast`, `\quad`, …) are **safe** — only backslash+punctuation
+     is unescaped.
+   - Use `\ast`, never a raw `*`, for the equilibrium star (`y^\ast`): a `*`
+     inside `$…$` gets eaten by markdown emphasis.
+2. **No `$…$` inside an emphasis span.** GitHub won't recognise math delimiters
+   inside `*italic*` / `_italic_` / `**bold**` runs — the whole span renders as
+   literal `$x_D = 0.95$`. A *closed* bold/italic lead-in with the math *after*
+   it is fine (`**Note** — value $x = 1$.`); math *inside* the emphasis is not.
+   (This is why figure captions can't be a single `*…*` paragraph with math.)
+3. **Don't paren-hug both delimiters: `($…$)` breaks.** An opening `$`
+   immediately after `(` **and** a closing `$` immediately before `)` trips
+   cmark's delimiter-flanking rules and the span isn't recognised. Single-side
+   hugs are fine (`($x$ such`, `…, $y$)`). Reword so at least one delimiter is
+   space/comma/period-flanked.
+
+**Diagnosis note:** a `$…$` that fails cmark *recognition* shows as **literal
+source** (`$x_D$`); a span that MathJax *rejects* shows a **red error box**.
+Literal source ⇒ traps 2–3 (or a bare `&` from trap 1); error box ⇒ bad LaTeX.
+The `/markdown` GitHub API does **not** enable the math extension, so it can't
+be used to test recognition — the only faithful oracles are the live repo view
+and the greps below.
+
+**Verify before every push** (local MathJax alone is necessary but **not**
+sufficient — it misses 1–3). Each grep must return nothing:
+
+```sh
+grep -nE '\\[^a-zA-Z ]' docs/theory/*.md   # trap 1: backslash-punctuation (\& \, \; \! …)
+grep -nE '\(\$[^$]*\$\)' docs/theory/*.md   # trap 3: double paren-hug ($…$)
+```
+
+Trap 2 (math inside emphasis) can't be grepped cleanly — subscripts put `_`
+all over valid math — so **eyeball it manually**: no `$…$` may sit inside an
+`*…*` / `_…_` / `**…**` run (captions are the usual offender). For full
+confidence, extract every span, apply the `\`+punct unescape, and render
+through MathJax (a throwaway harness for this lived in scratch during M1).
+
 ## Method / Algorithm Choices
 
 The rationale behind the solver design (PLAN.md §5) — apply these when
