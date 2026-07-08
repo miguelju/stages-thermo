@@ -5,11 +5,11 @@ equilibrium curve, gray y = x diagonal, red rectifying and green stripping
 operating lines meeting at the purple q-line, the numbered blue staircase of
 theoretical stages, and the dashed limiting line at minimum reflux.](img/mccabe-thiele.png)
 
-*Above: the diagram this document builds, rendered straight from the library —
-benzene–toluene, $x_D = 0.95$, $x_B = 0.05$, $z_F = 0.5$, saturated-liquid feed,
-$R = 1.5 R_{\min}$. It gives $R_{\min} = 1.163$ and $N = 12.22$ stages with the
-feed on stage 6 (the pinned notebook values, §6). Regenerate with
-`stages.mccabe_thiele` + `stages.plotting.plot_mccabe_thiele`.*
+**The diagram above** is rendered straight from the library — benzene–toluene,
+$x_D = 0.95$, $x_B = 0.05$, $z_F = 0.5$, saturated-liquid feed, $R = 1.5 R_{\min}$.
+It gives $R_{\min} = 1.163$ and $N = 12.22$ stages with the feed on stage 6 (the
+pinned notebook values, §6). Regenerate with `stages.mccabe_thiele` +
+`stages.plotting.plot_mccabe_thiele`.
 
 *Modules: `engine/src/binary/equilibrium.rs`, `engine/src/binary/mccabe_thiele.rs`,
 `engine/src/column/model.rs`. Notebook: `notebooks/01-mccabe-thiele.ipynb`.*
@@ -68,8 +68,8 @@ $(x_B, x_B)$ and the rectifying ∩ q-line intersection
 
 From $(x_D, x_D)$, alternate: **horizontal** to the curve
 ($x_n$ such that $y^\ast(x_n) = y_n$, via inverse interpolation) — one theoretical
-stage — then **vertical** to the active operating line
-($y_{n+1} = y_\text{op}(x_n)$). The staircase switches from the rectifying to
+stage — then **vertical** to the active operating line, giving
+$y_{n+1} = y_\text{op}(x_n)$. The staircase switches from the rectifying to
 the stripping line the first time $x_n$ passes the operating-line intersection
 — that stage is the **optimal feed stage**. Stepping ends when $x_n \le x_B$;
 the final stage is counted fractionally, linearly in $x$:
