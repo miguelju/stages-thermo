@@ -1,5 +1,16 @@
 # McCabe–Thiele — the equations as implemented
 
+![McCabe–Thiele staircase for a benzene–toluene 95/5 split at 101.325 kPa: blue
+equilibrium curve, gray y = x diagonal, red rectifying and green stripping
+operating lines meeting at the purple q-line, the numbered blue staircase of
+theoretical stages, and the dashed limiting line at minimum reflux.](img/mccabe-thiele.png)
+
+*Above: the diagram this document builds, rendered straight from the library —
+benzene–toluene, $x_D = 0.95$, $x_B = 0.05$, $z_F = 0.5$, saturated-liquid feed,
+$R = 1.5\,R_{\min}$. It gives $R_{\min} = 1.163$ and $N = 12.22$ stages with the
+feed on stage 6 (the pinned notebook values, §6). Regenerate with
+`stages.mccabe_thiele` + `stages.plotting.plot_mccabe_thiele`.*
+
 *Modules: `engine/src/binary/equilibrium.rs`, `engine/src/binary/mccabe_thiele.rs`,
 `engine/src/column/model.rs`. Notebook: `notebooks/01-mccabe-thiele.ipynb`.*
 
@@ -15,16 +26,16 @@ the last stage). Units: K, kPa absolute, kmol/h.
 ## 1. The equilibrium curve (`binary/equilibrium.rs`)
 
 At fixed column pressure $P$, each liquid composition $x$ has a bubble point
-$T(x)$ with incipient vapor $y^*(x)$. `EquilibriumCurve::from_thermo` sweeps
+$T(x)$ with incipient vapor $y^\ast(x)$. `EquilibriumCurve::from_thermo` sweeps
 `ThermoSystem::bubble_temperature` (vle-thermo) over an even $x$ grid and stores
-$(x_i,\,y^*_i,\,T_i)$; queries interpolate linearly (binary search +
-piecewise-linear, `interp`). The endpoints $y^*(0)=0$, $y^*(1)=1$ are pinned
+$(x_i,\,y^\ast_i,\,T_i)$; queries interpolate linearly (binary search +
+piecewise-linear, `interp`). The endpoints $y^\ast(0)=0$, $y^\ast(1)=1$ are pinned
 exactly (thermodynamic identity).
 
 The textbook idealization, kept as a constructor and used as the analytic test
 oracle:
 
-$$y = \frac{\alpha x}{1 + (\alpha - 1)\,x} \tag{S&H 7-13}$$
+$$y = \frac{\alpha x}{1 + (\alpha - 1)\,x} \tag{S\&H 7-13}$$
 
 Point relative volatility from the curve:
 $\alpha(x) = \dfrac{y/(1-y)}{x/(1-x)}$.
@@ -33,17 +44,17 @@ $\alpha(x) = \dfrac{y/(1-y)}{x/(1-x)}$.
 
 $$F = D + B, \qquad F z_F = D x_D + B x_B
 \;\Rightarrow\;
-D = F\,\frac{z_F - x_B}{x_D - x_B} \tag{S&H 7-2, 7-3}$$
+D = F\,\frac{z_F - x_B}{x_D - x_B} \tag{S\&H 7-2, 7-3}$$
 
 ## 3. Construction lines (`binary/mccabe_thiele.rs`)
 
 With external reflux ratio $R = L/D$ and constant molal overflow (the
 McCabe–Thiele assumption — relaxed at rung 2, Ponchon–Savarit):
 
-$$\text{rectifying:}\quad y = \frac{R}{R+1}x + \frac{x_D}{R+1} \tag{S&H 7-9}$$
+$$\text{rectifying:}\quad y = \frac{R}{R+1}x + \frac{x_D}{R+1} \tag{S\&H 7-9}$$
 
 $$\text{q-line:}\quad y = \frac{q}{q-1}x - \frac{z_F}{q-1},
-\quad\text{vertical at } q = 1 \tag{S&H 7-26}$$
+\quad\text{vertical at } q = 1 \tag{S\&H 7-26}$$
 
 where $q$ is the fraction of the feed joining the liquid ($\bar L = L + qF$,
 $\bar V = V - (1-q)F$). The stripping line is taken in two-point form through
@@ -53,7 +64,7 @@ $(x_B, x_B)$ and the rectifying ∩ q-line intersection
 ## 4. Stage stepping (`mccabe_thiele`, `total_reflux`)
 
 From $(x_D, x_D)$, alternate: **horizontal** to the curve
-($x_n$ such that $y^*(x_n) = y_n$, via inverse interpolation) — one theoretical
+($x_n$ such that $y^\ast(x_n) = y_n$, via inverse interpolation) — one theoretical
 stage — then **vertical** to the active operating line
 ($y_{n+1} = y_\text{op}(x_n)$). The staircase switches from the rectifying to
 the stripping line the first time $x_n$ passes the operating-line intersection
@@ -79,7 +90,7 @@ last equilibrium stage.
 **Murphree vapor efficiency** ($E_{MV} < 1$, S&H §7.4): the horizontal step
 targets the pseudo-curve
 
-$$y_\text{eff}(x) = y_\text{op}(x) + E_{MV}\,\big(y^*(x) - y_\text{op}(x)\big)$$
+$$y_\text{eff}(x) = y_\text{op}(x) + E_{MV}\,\big(y^\ast(x) - y_\text{op}(x)\big)$$
 
 inverted by bisection ($y_\text{eff}$ is monotone). The pseudo-curve is applied
 to every stage including the reboiler — slightly conservative (a real reboiler
@@ -91,18 +102,18 @@ the true curve (the classical construction).
 The pinch is found geometrically over the sampled curve — **not** assumed to
 sit at the feed point, so tangent pinches are handled on both sections:
 
-1. **Feed point**: the q-line ∩ curve intersection $(x_q^*, y_q^*)$
+1. **Feed point**: the q-line ∩ curve intersection $(x_q^\ast, y_q^\ast)$
    (`q_line_curve_intersection`; special-cased vertical/horizontal, otherwise a
    sign-change scan outward from $z_F$, on the side determined by the q-line
    slope).
 2. **Rectifying side**: the operating line anchored at $(x_D, x_D)$ must stay
-   below the curve on $[x_q^*, x_D]$. Limiting slope
+   below the curve on $[x_q^\ast, x_D]$. Limiting slope
    $m = \max_e \dfrac{x_D - y_e}{x_D - x_e}$ over curve samples (the feed point
    is a candidate), then $R_\text{rect} = m/(1-m)$. $m \ge 1$ ⇒ the spec is
    **infeasible** at any reflux (e.g. $x_D$ beyond an azeotrope) —
    `StagesError::Infeasible`.
 3. **Stripping side**: the line anchored at $(x_B, x_B)$ must stay below the
-   curve on $[x_B, x_q^*]$; limiting slope
+   curve on $[x_B, x_q^\ast]$; limiting slope
    $s = \min_e \dfrac{y_e - x_B}{x_e - x_B}$. With $d = D/F$ from §2, the
    feed-section balances convert $s = \bar L/\bar V$ to an equivalent reflux:
 
