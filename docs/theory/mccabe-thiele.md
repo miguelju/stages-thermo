@@ -7,7 +7,7 @@ theoretical stages, and the dashed limiting line at minimum reflux.](img/mccabe-
 
 *Above: the diagram this document builds, rendered straight from the library —
 benzene–toluene, $x_D = 0.95$, $x_B = 0.05$, $z_F = 0.5$, saturated-liquid feed,
-$R = 1.5\,R_{\min}$. It gives $R_{\min} = 1.163$ and $N = 12.22$ stages with the
+$R = 1.5 R_{\min}$. It gives $R_{\min} = 1.163$ and $N = 12.22$ stages with the
 feed on stage 6 (the pinned notebook values, §6). Regenerate with
 `stages.mccabe_thiele` + `stages.plotting.plot_mccabe_thiele`.*
 
@@ -28,33 +28,36 @@ the last stage). Units: K, kPa absolute, kmol/h.
 At fixed column pressure $P$, each liquid composition $x$ has a bubble point
 $T(x)$ with incipient vapor $y^\ast(x)$. `EquilibriumCurve::from_thermo` sweeps
 `ThermoSystem::bubble_temperature` (vle-thermo) over an even $x$ grid and stores
-$(x_i,\,y^\ast_i,\,T_i)$; queries interpolate linearly (binary search +
+$(x_i, y^\ast_i, T_i)$; queries interpolate linearly (binary search +
 piecewise-linear, `interp`). The endpoints $y^\ast(0)=0$, $y^\ast(1)=1$ are pinned
 exactly (thermodynamic identity).
 
-The textbook idealization, kept as a constructor and used as the analytic test
-oracle:
+The textbook idealization (S&H eq. 7-13), kept as a constructor and used as the
+analytic test oracle:
 
-$$y = \frac{\alpha x}{1 + (\alpha - 1)\,x} \tag{S\&H 7-13}$$
+$$y = \frac{\alpha x}{1 + (\alpha - 1) x}$$
 
 Point relative volatility from the curve:
 $\alpha(x) = \dfrac{y/(1-y)}{x/(1-x)}$.
 
 ## 2. Material balances (`column/model.rs`)
 
+Overall and light-component balances (S&H eqs. 7-2, 7-3):
+
 $$F = D + B, \qquad F z_F = D x_D + B x_B
-\;\Rightarrow\;
-D = F\,\frac{z_F - x_B}{x_D - x_B} \tag{S\&H 7-2, 7-3}$$
+\quad\Rightarrow\quad
+D = F \frac{z_F - x_B}{x_D - x_B}$$
 
 ## 3. Construction lines (`binary/mccabe_thiele.rs`)
 
 With external reflux ratio $R = L/D$ and constant molal overflow (the
-McCabe–Thiele assumption — relaxed at rung 2, Ponchon–Savarit):
+McCabe–Thiele assumption — relaxed at rung 2, Ponchon–Savarit), the rectifying
+line (S&H eq. 7-9) and the q-line (S&H eq. 7-26) are:
 
-$$\text{rectifying:}\quad y = \frac{R}{R+1}x + \frac{x_D}{R+1} \tag{S\&H 7-9}$$
+$$\text{rectifying:}\quad y = \frac{R}{R+1}x + \frac{x_D}{R+1}$$
 
 $$\text{q-line:}\quad y = \frac{q}{q-1}x - \frac{z_F}{q-1},
-\quad\text{vertical at } q = 1 \tag{S\&H 7-26}$$
+\quad\text{vertical at } q = 1$$
 
 where $q$ is the fraction of the feed joining the liquid ($\bar L = L + qF$,
 $\bar V = V - (1-q)F$). The stripping line is taken in two-point form through
@@ -80,7 +83,7 @@ stage; asserted in the tests.)
 At **total reflux** both operating lines collapse onto $y = x$ and the same
 stepping yields $N_{\min}$ — on a constant-α curve this reproduces Fenske:
 
-$$N_{\min} = \frac{\ln\!\big[(x_D/(1-x_D))\,\cdot\,((1-x_B)/x_B)\big]}{\ln \alpha}$$
+$$N_{\min} = \frac{\ln\big[(x_D/(1-x_D)) \cdot ((1-x_B)/x_B)\big]}{\ln \alpha}$$
 
 **Condenser kinds:** a total condenser is not an equilibrium stage (stepping
 starts on the diagonal at $x_D$); a partial condenser is one (the first step of
@@ -90,7 +93,7 @@ last equilibrium stage.
 **Murphree vapor efficiency** ($E_{MV} < 1$, S&H §7.4): the horizontal step
 targets the pseudo-curve
 
-$$y_\text{eff}(x) = y_\text{op}(x) + E_{MV}\,\big(y^\ast(x) - y_\text{op}(x)\big)$$
+$$y_\text{eff}(x) = y_\text{op}(x) + E_{MV} \big(y^\ast(x) - y_\text{op}(x)\big)$$
 
 inverted by bisection ($y_\text{eff}$ is monotone). The pseudo-curve is applied
 to every stage including the reboiler — slightly conservative (a real reboiler
@@ -117,9 +120,9 @@ sit at the feed point, so tangent pinches are handled on both sections:
    $s = \min_e \dfrac{y_e - x_B}{x_e - x_B}$. With $d = D/F$ from §2, the
    feed-section balances convert $s = \bar L/\bar V$ to an equivalent reflux:
 
-   $$R_\text{strip} = \frac{q + s(1-q) - s\,d}{d\,(s - 1)}$$
+   $$R_\text{strip} = \frac{q + s(1-q) - s d}{d (s - 1)}$$
 
-4. $R_{\min} = \max(R_\text{rect},\, R_\text{strip})$; the arg-max sample is
+4. $R_{\min} = \max(R_\text{rect}, R_\text{strip})$; the arg-max sample is
    the reported pinch, flagged `tangent` when it sits away from the feed point.
 
 For a concave curve both sections give the same feed pinch (asserted in tests);
@@ -127,7 +130,7 @@ on constant-α curves with $q = 1$ the result matches Underwood's binary closed
 form (S&H eq. 7-24):
 
 $$R_{\min} = \frac{1}{\alpha - 1}\left[\frac{x_D}{z_F} -
-\alpha\,\frac{1 - x_D}{1 - z_F}\right]$$
+\alpha \frac{1 - x_D}{1 - z_F}\right]$$
 
 ## 6. Validation summary
 
