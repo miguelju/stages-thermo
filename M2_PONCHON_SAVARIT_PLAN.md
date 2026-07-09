@@ -4,8 +4,10 @@
 > This milestone consumes a new **NRTL** activity model and an **ammonia** component that do
 > not yet exist in vle-thermo. Execute the vle-repo plan first
 > (`/Users/migueljackson/dev/vle/NRTL_AMMONIA_PLAN.md`), publish **vle-thermo 0.11.0**, then
-> bump `engine/Cargo.toml` here to `vle-thermo = "0.11"` and proceed. Everything below assumes
-> that release is live.
+> bump **both pins** here — `engine/Cargo.toml` to `vle-thermo = "0.11"` **and**
+> `python/pyproject.toml` to `vle-thermo>=0.11` — upgrade the wheel in the `stages` conda env
+> (`~/miniconda3/envs/stages/bin/pip install -U vle-thermo`), and proceed. Everything below
+> assumes that release is live.
 
 ## Context
 
@@ -26,10 +28,15 @@ is the lesson section at the bottom of this doc (destined for `docs/theory/ponch
 ## B1. Adapter enthalpy (`engine/src/thermo.rs`)
 
 - Add const reference-state fields `t_ref` (298.15 K), `p_ref` (101.325 kPa) to `ThermoSystem`, set once in
-  the `peng_robinson` / `van_laar` constructors (PLAN §7 reference-state discipline — never per-stage).
+  the constructors (PLAN §7 reference-state discipline — never per-stage).
+- **Add an `nrtl(names, tau/params, alpha)` constructor** mirroring `van_laar` (~L130) — route (a)'s
+  NRTL-computed chart requires it, and the adapter is the only module allowed to import vle-thermo.
+  Match the vle-thermo 0.11 NRTL surface (option-B parallel `alpha` matrix, τ = energy/(RT)) when it lands.
 - Add `phase_enthalpy(&self, t, p, comp, phase: PhaseId) -> Result<f64>` wrapping
   `vle_thermo::flash::system::phase_enthalpy_entropy(spec, t, p, comp, phase, t_ref, p_ref, &[], &[])`
   via the existing `with_spec` closure (~L196); `&[]` h_ref/s_ref = zero datum (P–S uses differences).
+  Upstream returns an `(H, S)` tuple — the wrapper takes `.0` and **deliberately discards S** (P–S never
+  uses entropy; widen to a pair only when a later milestone needs it).
   Import `vle_thermo::eos::PhaseId` (not re-exported at crate root). Mirror the `check_composition` +
   `map_err(StagesError::Thermo)` idiom. Integration-test the γ-φ path (empty `sat_models` slice).
 
@@ -57,9 +64,10 @@ is the lesson section at the bottom of this doc (destined for `docs/theory/ponch
 
 - `engine/src/binary/mod.rs` — `pub mod ponchon_savarit;` + re-exports.
 - `engine/src/py_bindings.rs` — `phase_enthalpy` method (add a `parse_phase` helper like `parse_condenser`
-  ~L53), `ponchon_savarit` `#[pyfunction]`, `PonchonSavaritResult` + `EnthalpyCurve` pyclasses, enthalpy
-  accessors, `from_points`-with-enthalpy static method; register via `add_class` / `add_function`.
-- `python/src/stages/__init__.py` — import + `__all__` (~L43, L71).
+  ~L53), the **`nrtl` static constructor** (alongside `peng_robinson` / `van_laar`), `ponchon_savarit`
+  `#[pyfunction]`, `PonchonSavaritResult` + `EnthalpyCurve` pyclasses, enthalpy accessors,
+  `from_points`-with-enthalpy static method; register via `add_class` / `add_function`.
+- `python/src/stages/__init__.py` — import + `__all__` (~L43, L71), incl. the new `nrtl` constructor path.
 - `python/src/stages/plotting.py` — `plot_hxy` + `plot_ponchon_savarit` with a **new `_draw_hxy_frame`**
   (H on y-axis, composition on x-axis, saturated-liquid/vapor curves, tie lines, poles, stage staircase;
   **not** the unit-square frame, no `set_aspect("equal")`). Add to `__all__`.
@@ -85,7 +93,7 @@ is the lesson section at the bottom of this doc (destined for `docs/theory/ponch
 ## Reuse (verbatim) from M1
 
 The free `interp` fn (`equilibrium.rs:~280`), the `with_spec` closure (`thermo.rs:~196`), the
-sign-change-scan + linear-root idiom (`mccabe_thiele.rs:~277`), the stepping-loop skeleton with
+sign-change-scan + linear-root idiom (`q_line_curve_intersection`, `mccabe_thiele.rs:~256`), the stepping-loop skeleton with
 fractional-last-stage + pinch guards (`mccabe_thiele.rs:~481`), the `to_py_err` / `parse_condenser`
 binding idioms (`py_bindings.rs:~41,53`), and the deferred-matplotlib `_draw_frame` plotting idiom.
 
@@ -117,12 +125,12 @@ model-attribution lines in ROADMAP.md + TODO.md + commit trailer; doc-sync pass;
 *Motivating the two ammonia–water constructions in the notebook — one computed from a model, one from reference data.*
 
 **The textbook case was done on charts, not on-the-fly thermo.** Ponchon (1921) and Savarit (1922)
-devised the enthalpy–composition method as a *graphical* procedure run on a pre-drawn H–x–y diagram for
-one specific binary: nothing is computed during the construction — you locate the difference points
+devised the enthalpy–composition method as a *graphical* procedure run on a pre-drawn H–x–y diagram of
+the binary at hand: nothing is computed during the construction — you locate the difference points
 (poles) and step off stages with a straightedge on a printed chart. For ammonia–water that chart is the
-Merkel–Bošnjaković enthalpy–concentration diagram (Bošnjaković, *Technische Thermodynamik*, 1935), built
-from **experimental data** — vapor–liquid equilibrium plus **calorimetry** (heats of solution/mixing,
-heat capacities, latent heats) — reduced onto one diagram. Its modern refinements are the correlations
+Merkel–Bošnjaković enthalpy–concentration diagram (Merkel & Bošnjaković, 1929; Bošnjaković, *Technische
+Thermodynamik*, 1935), built from **experimental data** — vapor–liquid equilibrium plus **calorimetry**
+(heats of solution/mixing, heat capacities, latent heats) — reduced onto one diagram. Its modern refinements are the correlations
 still used today: Scatchard et al. (1947), Macriss et al. (1964), the ASHRAE/EES formulation of
 Ibrahim & Klein (1993), and the reference Helmholtz-energy EOS of Tillner-Roth & Friend (1998). So the
 "textbook thermo" for ammonia–water *is* a data artifact — a chart/correlation — and Ponchon–Savarit is
@@ -135,20 +143,25 @@ McCabe–Thiele returns the wrong stage count *and* the wrong internal flows. Po
 energy balance exactly through the chart, so it is the method you genuinely need here — which is precisely
 why textbooks introduce it on ammonia–water.
 
-**Why a computed NRTL γ-φ chart frays.** Regenerating the H–x–y diagram from a model splits it: activity
-coefficients (NRTL) for the liquid, a cubic EOS for the vapor, enthalpies from ideal-gas terms plus a
-liquid excess-enthalpy and a vapor departure. The weak links, in order: (1) **the vapor at elevated
-pressure** — the classic charts live at several bar, where the cubic-EOS vapor enthalpy departure is only
-approximate; this dominates the error and is not the activity model's fault; (2) **the reference state for
-a dissolving light gas** — γ-φ references the liquid to pure liquid ammonia, an awkward datum at generator
-conditions; (3) **the curvature of the excess enthalpy** — real ammonia–water heat of mixing is large,
+**Why a computed NRTL γ-φ chart frays.** Regenerating the H–x–y diagram from a model splits it into
+pieces, each with its own error: activity coefficients (NRTL) for the liquid, a cubic EOS for the vapor.
+The vapor enthalpy is ideal-gas terms plus an EOS departure; the liquid enthalpy is ideal-gas terms
+**minus a per-component condensation (latent-heat) term plus the NRTL excess enthalpy** — the γ-φ route
+vle-thermo actually computes. The weak links, in order: (1) **the vapor at elevated pressure** — the
+classic charts live at several bar, where the cubic-EOS vapor enthalpy departure is only approximate;
+this dominates the error and is not the activity model's fault; (2) **the pure-liquid-ammonia reference
+for a dissolving light gas** — the γ-φ liquid route reaches the liquid through each pure component's
+latent heat, a Clausius–Clapeyron term taken from the slope of the saturation-pressure correlation, so a
+few-percent error in that slope lands directly in the liquid enthalpy; and pure liquid ammonia itself is
+an awkward datum as temperature climbs toward its critical point (405.4 K — generator conditions get
+close); (3) **the curvature of the excess enthalpy** — the real ammonia–water heat of mixing is large,
 asymmetric, and strongly temperature-dependent across the full range, and a few-parameter NRTL cannot match
 it at the water-rich and ammonia-rich ends at once. Net: NRTL gets a few percent at moderate pressure — a
 real improvement over Wilson or van Laar — but not a pixel-match to the Bošnjaković chart.
 
 **The "UNIQUAC is in the good models" trap.** It is tempting to reach for UNIQUAC because the celebrated
 ammonia–water model uses it — but that model (Thomsen & Rasmussen, 1999) is *extended* UNIQUAC: plain
-UNIQUAC plus a Debye–Hückel term plus speciation (NH3 + H2O to NH4+ and OH-). All the accuracy comes from
+UNIQUAC plus a Debye–Hückel term plus speciation (NH₃ + H₂O ⇌ NH₄⁺ + OH⁻). All the accuracy comes from
 those additions, not from the local-composition kernel. On a single binary fit, plain UNIQUAC has only two
 adjustable energy parameters (its r and q are fixed structural constants) against NRTL's three, and its
 size-asymmetry advantage is wasted on two small molecules — so plain UNIQUAC is, if anything, slightly
@@ -162,7 +175,7 @@ that genuinely reproduce the chart, but each a large undertaking.
 **Why this project does not build the specialized models.** Their distinguishing capability serves nothing
 else on the roadmap. Extended UNIQUAC's electrolyte/speciation machinery is used by exactly one planned
 system (ammonia–water); every other case — hydrocarbons, alcohol–water, acetone–water, the extractive and
-azeotropic ternaries — is neutral and needs none of it. A Helmholtz EOS is either single-system
+azeotropic ternaries — is a neutral (non-electrolyte) system and needs none of it. A Helmholtz EOS is either single-system
 (Tillner-Roth) or a from-scratch reference backbone nothing planned requires (the cubic EOS already meets
 the roughly 1 percent cross-simulator target, and the validation oracles use cubic EOS themselves). NRTL,
 by contrast, is general infrastructure: it improves every aqueous-organic column on the ladder and is the
@@ -180,6 +193,8 @@ model. Shown side by side, the gap between them is the lesson.
 
 - Ponchon, M. Étude graphique de la distillation fractionnée. *La Technique Moderne* **1921**, 13, 20 and 55.
 - Savarit, R. *Arts et Métiers* **1922** (enthalpy–composition construction). *(verify volume/pages)*
+- Merkel, F.; Bošnjaković, F. *Diagramme und Tabellen zur Berechnung der Absorptions-Kältemaschinen*;
+  Springer: Berlin, **1929**. *(the original NH₃–H₂O enthalpy–concentration diagrams)*
 - Bošnjaković, F. *Technische Thermodynamik*; Theodor Steinkopff: Dresden, **1935**.
 - Scatchard, G.; Epstein, L. F.; Warburton, J.; Cody, P. J. Thermodynamic properties of saturated liquid and
   vapor of ammonia–water mixtures. *Refrig. Eng.* **1947**, 53, 413. *(verify)*
@@ -197,5 +212,6 @@ model. Shown side by side, the gap between them is the lesson.
   (extended UNIQUAC). *Chem. Eng. Sci.* **1999**, 54, 1787.
 - Wilson, G. M. Vapor–liquid equilibrium. XI. A new expression for the excess free energy of mixing.
   *J. Am. Chem. Soc.* **1964**, 86, 127.
+- van Laar, J. J. Über Dampfspannungen von binären Gemischen. *Z. Phys. Chem.* **1910**, 72, 723.
 - Code mapping: `Ponchon–Savarit construction → engine/src/binary/ponchon_savarit.rs` (Ponchon 1921 /
   Savarit 1922; S&H Ch. 7 energy-balance treatment); `NRTL → vle-thermo activity.rs` (Renon & Prausnitz 1968).
