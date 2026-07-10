@@ -8,6 +8,9 @@ comment (see `CLAUDE.md`, "Reference Citation Requirements").
 ## Core method references
 
 - **McCabe & Thiele**, *Ind. Eng. Chem.* **1925**, 17(6), 605–611. — the graphical binary method (M1).
+- **Ponchon**, M. *La Technique Moderne* **1921**, 13, 20 and 55. — the enthalpy–composition (H–x–y) construction (M2).
+- **Savarit**, R. *Arts et Métiers* **1922**. — the enthalpy–composition construction (M2). *(verify volume/pages)*
+- **Renon & Prausnitz**, *AIChE J.* **1968**, 14, 135. — NRTL local-composition activity model (M2 liquid model, in vle-thermo).
 - **Wang & Henke**, *Hydrocarbon Process.* **1966**, 45(8), 155. — bubble-point MESH method (M6).
 - **Friday & Smith**, *AIChE J.* **1964**, 10, 698. — why bubble-point ↔ narrow-boiling, sum-rates ↔ wide-boiling.
 - **Burningham & Otto**, *Hydrocarbon Process.* **1967**, 46(10), 163. — sum-rates method for absorbers (M7).
@@ -34,6 +37,34 @@ comment (see `CLAUDE.md`, "Reference Citation Requirements").
 - **Górak & Sørensen (eds.)**, *Distillation: Fundamentals and Principles*, 2014.
 - **Taylor & Kooijman**, *The ChemSep Book* (chemsep.org). — ChemSep is the academic gold-standard cross-validation oracle.
 
+## Ammonia–water enthalpy–composition data (M2 showcase)
+
+The classic Ponchon–Savarit teaching system. Its enthalpy–concentration chart is
+a *data artifact* (VLE + calorimetry reduced onto one diagram), not an on-the-fly
+model — see the lesson in [`theory/ponchon-savarit.md`](theory/ponchon-savarit.md).
+Page numbers to be firmed up at citation time.
+
+- **Merkel, F.; Bošnjaković, F.** *Diagramme und Tabellen zur Berechnung der
+  Absorptions-Kältemaschinen*; Springer: Berlin, **1929**. — the original
+  NH₃–H₂O enthalpy–concentration diagrams.
+- **Bošnjaković, F.** *Technische Thermodynamik*; Theodor Steinkopff: Dresden, **1935**.
+- **Scatchard, G.; Epstein, L. F.; Warburton, J.; Cody, P. J.** Thermodynamic
+  properties of saturated liquid and vapor of ammonia–water mixtures. *Refrig.
+  Eng.* **1947**, 53, 413. *(verify)*
+- **Macriss, R. A.; Eakin, B. E.; Ellington, R. T.; Huebler, J.** *Physical and
+  Thermodynamic Properties of Ammonia–Water Mixtures*; Institute of Gas
+  Technology Research Bulletin 34, **1964**.
+- **Ibrahim, O. M.; Klein, S. A.** Thermodynamic properties of ammonia–water
+  mixtures. *ASHRAE Trans.* **1993**, 99 (1), 1495. — the ASHRAE/EES formulation.
+- **Tillner-Roth, R.; Friend, D. G.** A Helmholtz free energy formulation of the
+  thermodynamic properties of the mixture {water + ammonia}. *J. Phys. Chem. Ref.
+  Data* **1998**, 27, 63.
+- **Abrams & Prausnitz**, *AIChE J.* **1975**, 21, 116. — UNIQUAC (cited in the
+  lesson for the "UNIQUAC trap"; not used here).
+- **Thomsen, K.; Rasmussen, P.** *Chem. Eng. Sci.* **1999**, 54, 1787. —
+  *extended* UNIQUAC (the electrolyte model whose accuracy the lesson attributes
+  to its additions, not the local-composition kernel).
+
 ## Reference implementations studied (not ported)
 
 - **BioSTEAM** — `biosteam/units/stage.py` (Python, NCSA permissive): the only complete open inside-out plus a modern simultaneous-correction with analytic block-tridiagonal Jacobian. **Mimic freely** (license-compatible).
@@ -48,6 +79,13 @@ comment (see `CLAUDE.md`, "Reference Citation Requirements").
   are reproduced in `notebooks/01-mccabe-thiele.ipynb`.
 - **Perry's classic van Laar set** — ethanol(1)–water(2) A₁₂ = 1.6798,
   A₂₁ = 0.9227 (notebook exercise 1: azeotrope + tangent pinch).
+- **Ammonia–water NRTL (illustrative)** — NH₃(1)–H₂O(2) with `aij[0][1] = −1800`,
+  `aij[1][0] = −1200` kJ/kmol (energy convention `gᵢⱼ − gⱼⱼ`) and α = 0.2
+  (carried over from vle Milestone 14). Signs are physically correct (negative
+  deviation, exothermic mixing); magnitudes are illustrative, not a certified
+  regression — used for the route-(a) NRTL chart in
+  `notebooks/02-ponchon-savarit.ipynb`. The route-(b) reference chart uses
+  representative Bošnjaković/Ibrahim–Klein-style H–x–y data (see the notebook).
 
 ## Reference → code mapping
 
@@ -58,4 +96,11 @@ Populated as modules land. Format: `<method>` → `engine/src/<path>` (implement
 - Equilibrium curve y*(x) → `engine/src/binary/equilibrium.rs` (bubble-point
   sweep via vle-thermo; constant-α form S&H eq. 7-13 as test oracle).
 - Binary column balances → `engine/src/column/model.rs` (S&H eqs. 7-2/7-3).
+- Ponchon–Savarit construction → `engine/src/binary/ponchon_savarit.rs`
+  (implements Ponchon 1921 / Savarit 1922; S&H Ch. 7 energy-balance treatment).
+- Enthalpy–composition curve (H–x–y) → `engine/src/binary/equilibrium.rs`
+  (`EnthalpyCurve`); per-phase molar enthalpy → `engine/src/thermo.rs`
+  (`ThermoSystem::phase_enthalpy`, wrapping vle-thermo's γ-φ / φ-φ enthalpy).
+- NRTL activity model → vle-thermo `activity.rs` (Renon & Prausnitz 1968);
+  exposed to stages via `ThermoSystem::nrtl`.
 - Theory write-up: [`theory/mccabe-thiele.md`](theory/mccabe-thiele.md).

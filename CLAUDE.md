@@ -5,8 +5,9 @@ code in this repository.
 
 **stages-thermo** is a staged-separation (distillation) learning library and
 fast steady-state column solver, built on **`vle-thermo`** (crates.io / PyPI,
-MIT, currently v0.9.1 — the engine pins `vle-thermo = "0.9"` with the
-`component-db` feature). It adds no thermodynamics of its own — it is the first
+MIT, currently v0.11.0 — the engine pins `vle-thermo = "0.11"` with the
+`component-db` feature; M2 needed 0.11's NRTL model + ammonia component). It
+adds no thermodynamics of its own — it is the first
 downstream consumer of vle-thermo. Conventions here are carried over from the
 vle repo with names adjusted (`vle` → `stages`, import name `stages`, crate/PyPI
 name `stages-thermo`).

@@ -8,9 +8,9 @@ build-backend = "maturin"
 # "distribution != import" pattern (Pillow → PIL) and mirroring vle-thermo →
 # `import vle`. See PLAN §2 for the import-name rationale.
 name = "stages-thermo"
-# Keep in sync with Cargo.toml [workspace.package] version. 0.1.0 = M1, the
-# first real release (column model + McCabe–Thiele).
-version = "0.1.0"
+# Keep in sync with Cargo.toml [workspace.package] version. 0.1.0 = M1
+# (column model + McCabe–Thiele); 0.2.0 = M2 (Ponchon–Savarit + NRTL/enthalpy).
+version = "0.2.0"
 description = "Staged-separation (distillation) column solver: McCabe–Thiele, Ponchon–Savarit, FUG shortcut, and rigorous MESH methods, built on vle-thermo"
 readme = "README.md"
 license = { text = "MIT" }
@@ -45,9 +45,9 @@ dependencies = [
     "numpy>=1.24",
     # The thermodynamics backend. stages-thermo adds no thermo of its own
     # (PLAN §1/§3); the notebooks drive `vle.System` for thermo exploration
-    # alongside `stages` for columns. 0.9 = the derivative/database release
-    # the engine crate builds against.
-    "vle-thermo>=0.9",
+    # alongside `stages` for columns. 0.11 = the NRTL + ammonia release the
+    # engine crate builds against (M2 Ponchon–Savarit needs both).
+    "vle-thermo>=0.11",
 ]
 
 [project.optional-dependencies]

@@ -37,15 +37,18 @@ the separate tiny PR was unnecessary.
 - [✓] **Upstream component DB** (~1h) — superseded by M4: vle-thermo 0.9.x ships the 24-compound Rust DB (toluene, ethanol, benzene, … with `cp_coeffs`); engine dep bumped to `vle-thermo = "0.9"` + `component-db`
 - [✓] **📓 `01-mccabe-thiele.ipynb`** (~2–3h) — benzene–toluene (PR EOS), methanol–water (van Laar, ties to vle Ch. IV via Table 4.6); 3 exercises with hidden solutions; pinned assertions; executes top-to-bottom
 
-## Milestone 2: Ponchon–Savarit *(10–14 h)*
+## Milestone 2: Ponchon–Savarit *(10–14 h)* — **complete**
+*Executed by Claude Code using Claude Opus 4.8 (1M context)*
 
-Energy balances enter. The adapter's γ-φ enthalpy assembly lands here.
+Energy balances enter. Consumed vle-thermo 0.11 (NRTL + ammonia); the enthalpy
+assembly is wrapped (not re-derived) from vle-thermo's γ-φ / φ-φ enthalpy route.
 
-- [ ] **Adapter γ-φ enthalpy assembly** (~3–4h) — ideal + excess, assembled in `thermo.rs` from vle-thermo building blocks
-- [ ] **H–x–y diagram construction** (~2–3h) — from vle-thermo enthalpies
-- [ ] **`binary/ponchon_savarit.rs`** (~3–4h) — difference points, tie-line stepping, stage stepping
-- [ ] **Comparison cell** (~1h) — P–S vs M–T stage counts vs CMO error
-- [ ] **📓 `02-ponchon-savarit.ipynb`** (~2–3h)
+- [✓] **Adapter enthalpy + NRTL** (~3–4h) — `ThermoSystem::phase_enthalpy` wraps vle-thermo's `phase_enthalpy_entropy` (γ-φ = ideal − Clausius-Clapeyron + Hᴱ); `nrtl(names, a12, a21, alpha)` constructor (0.11's parallel `alpha` matrix); one reference state (`t_ref`/`p_ref`, PLAN §7)
+- [✓] **H–x–y diagram construction** (~2–3h) — `EnthalpyCurve` (`from_thermo` computes; `from_points` feeds reference enthalpy+VLE data)
+- [✓] **`binary/ponchon_savarit.rs`** (~3–4h) — difference points Δ_D/Δ_B, tie-line + pole-line stepping (mirrors `mccabe_thiele.rs`), per-mole-feed duties, mass + energy closure asserted
+- [✓] **Comparison** (~1h) — P–S vs M–T stage counts vs CMO error (benzene–toluene agree; methanol–water diverge; ammonia–water route-a-vs-b duty gap)
+- [✓] **PyO3 bindings + plotting** — `nrtl`/`phase_enthalpy`/`EnthalpyCurve`/`ponchon_savarit`; `plot_hxy` + `plot_ponchon_savarit` (`_draw_hxy_frame`); Rust `engine/tests/m2_ponchon_savarit.rs` + `python/tests/test_ponchon_savarit.py`
+- [✓] **📓 `02-ponchon-savarit.ipynb`** (~2–3h) — 3 worked examples + 2 exercises with hidden solutions; pinned assertions; executes top-to-bottom
 
 ## Milestone 3: FUG Shortcut *(12–16 h)*
 
@@ -165,9 +168,9 @@ A thin server (likely Python package `stages-mcp`) over the §8 granular API.
 |-----------|------|--------|
 | 0. Repo Bootstrap | ~4–6h | **Complete** |
 | 1. Column Model + McCabe–Thiele | ~14–20h | **Complete** (v0.1.0) |
-| 2. Ponchon–Savarit | ~10–14h | Not started |
+| 2. Ponchon–Savarit | ~10–14h | **Complete** (v0.2.0) |
 | 3. FUG Shortcut | ~12–16h | Not started |
-| 4. Upstream vle-thermo Derivative Release (0.9.x) | ~12–18h | **Complete** *(in the vle repo; vle-thermo v0.9.1 published)* |
+| 4. Upstream vle-thermo Derivative Release (0.9.x → 0.11) | ~12–18h | **Complete** *(in the vle repo; vle-thermo v0.9.1 for M1, v0.11.0 NRTL+ammonia for M2)* |
 | 5. MESH Infrastructure | ~10–14h | Not started |
 | 6. Wang–Henke Bubble-Point | ~12–16h | Not started |
 | 7. Sum-Rates | ~8–12h | Not started |

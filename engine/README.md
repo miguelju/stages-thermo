@@ -17,13 +17,15 @@ this crate adds none of its own.
 stages-thermo = "0.1"
 ```
 
-> **Status:** `0.1.x` ships the first rung of the ladder — the binary
-> McCabe–Thiele layer (Milestone 1): equilibrium curves from real
-> thermodynamics, minimum reflux by geometric pinch detection (tangent pinches
-> included), stage stepping with Murphree efficiency, total reflux, N(R), and
-> the binary column material balances. Multicomponent and rigorous MESH
-> solvers land milestone by milestone — see the repo's `ROADMAP.md`. The API
-> may still move before `1.0`.
+> **Status:** `0.2.x` ships the first two rungs of the ladder — the binary
+> **McCabe–Thiele** (Milestone 1) and **Ponchon–Savarit** (Milestone 2) layers:
+> equilibrium and enthalpy–composition (H–x–y) curves from real thermodynamics,
+> minimum reflux by geometric pinch detection (tangent pinches included), stage
+> stepping with Murphree efficiency, total reflux, N(R), the energy-exact
+> difference-point construction (with condenser/reboiler duties), the NRTL γ-φ
+> model, per-phase enthalpies, and the binary column material balances.
+> Multicomponent and rigorous MESH solvers land milestone by milestone — see the
+> repo's `ROADMAP.md`. The API may still move before `1.0`.
 
 ```rust
 use stages_thermo::binary::mccabe_thiele::McCabeThieleSpec;
@@ -60,11 +62,42 @@ println!(
 );
 ```
 
-The same construction runs on a γ-φ activity-model curve
-(`ThermoSystem::van_laar`), the constant-α idealization
+Rung 2 — **Ponchon–Savarit** — steps the same-shaped staircase on the
+enthalpy–composition (H–x–y) diagram, closing the energy balance through two
+difference points and returning the condenser/reboiler duties:
+
+```rust
+use stages_thermo::binary::equilibrium::EnthalpyCurve;
+use stages_thermo::binary::ponchon_savarit::{PonchonSavaritSpec, ponchon_savarit};
+use stages_thermo::column::CondenserKind;
+use stages_thermo::thermo::ThermoSystem;
+
+let system = ThermoSystem::peng_robinson(&["benzene", "toluene"]).unwrap();
+// The H–x–y curve: saturated-liquid and -vapor enthalpies alongside y*(x).
+let ec = EnthalpyCurve::from_thermo(&system, 101.325, 201).unwrap();
+let ps = ponchon_savarit(
+    &ec,
+    PonchonSavaritSpec {
+        x_distillate: 0.95,
+        x_bottoms: 0.05,
+        z_feed: 0.50,
+        q: 1.0,
+        reflux: 1.75,
+        condenser: CondenserKind::Total,
+    },
+)
+.unwrap();
+println!(
+    "N = {:.2} stages; Q_C/F = {:.0}, Q_R/F = {:.0} kJ/kmol feed",
+    ps.n_stages, ps.q_condenser, ps.q_reboiler
+);
+```
+
+The same constructions run on a γ-φ activity-model curve (`ThermoSystem::van_laar`
+or the NRTL `ThermoSystem::nrtl`), the constant-α idealization
 (`EquilibriumCurve::constant_alpha` — on which Fenske's and Underwood's closed
 forms are exact, which is how the stepping kernels are unit-tested), or raw
-literature data (`EquilibriumCurve::from_points`).
+literature data (`EquilibriumCurve::from_points` / `EnthalpyCurve::from_points`).
 
 The Python bindings (PyO3) are gated behind the `python` feature, which maturin
 enables when building the wheel published to PyPI as `stages-thermo`

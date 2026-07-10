@@ -62,15 +62,23 @@ CLAUDE.md / README.md, stand up CI, and hold both registry names.
 - [✓] Plotting — staircase diagram (`stages.plotting`, McCabe–Thiele + total-reflux)
 - [✓] 📓 `01-mccabe-thiele.ipynb` (benzene–toluene, methanol–water; 3 exercises with hidden solutions; pinned assertions)
 
-## Milestone 2: Ponchon–Savarit ~ *(10–14 h)*
+## Milestone 2: Ponchon–Savarit ~ *(10–14 h)* — **complete**
 **Goal**: Energy balances enter — the γ-φ enthalpy assembly in the adapter, the
 H–x–y diagram, and stage stepping by difference points.
+*Executed by Claude Code using Claude Opus 4.8 (1M context)*
 
-- [ ] Adapter γ-φ enthalpy assembly (ideal + excess) — lands here
-- [ ] H–x–y diagram construction from vle-thermo enthalpies
-- [ ] Difference points, tie-line stepping
-- [ ] Comparison cell: P–S vs M–T stage counts vs CMO error
-- [ ] 📓 `02-ponchon-savarit.ipynb`
+> Consumed vle-thermo **0.11** (NRTL activity model + ammonia component, shipped
+> upstream in the vle repo); the engine pin moved `0.9` → `0.11`.
+> 📓 `02-ponchon-savarit.ipynb`: benzene–toluene consistency check
+> (P–S ≈ M–T ≈ 12.2 stages), methanol–water CMO-error gap, and the
+> ammonia–water two-route showcase (NRTL-computed chart vs reference-data chart).
+
+- [✓] Adapter per-phase enthalpy (`ThermoSystem::phase_enthalpy`, wrapping vle-thermo's γ-φ / φ-φ enthalpy) + NRTL constructor + one reference state (`t_ref`/`p_ref`)
+- [✓] H–x–y diagram construction (`EnthalpyCurve`: `from_thermo` computes it, `from_points` feeds reference data)
+- [✓] Difference points (poles Δ_D/Δ_B), tie-line + pole-line stepping, per-mole-feed duties (`binary/ponchon_savarit.rs`)
+- [✓] Comparison: P–S vs M–T stage counts vs CMO error (near-ideal agree; nonideal diverge)
+- [✓] PyO3 bindings (`nrtl`, `phase_enthalpy`, `EnthalpyCurve`, `ponchon_savarit`) + `plot_hxy`/`plot_ponchon_savarit`
+- [✓] 📓 `02-ponchon-savarit.ipynb` (3 worked examples + 2 exercises, executes top-to-bottom)
 
 ## Milestone 3: FUG Shortcut ~ *(12–16 h)*
 **Goal**: The Fenske–Underwood–Gilliland shortcut suite — the "how simulators

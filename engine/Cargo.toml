@@ -29,7 +29,7 @@ crate-type = ["cdylib", "rlib"]
 # `component-db` enables vle_thermo::db — the Rust-side 24-compound database
 # (with ideal-gas Cp coefficients) that landed in the 0.9.x derivative release.
 # The adapter loads every component from it; stages-thermo hand-builds none.
-vle-thermo = { version = "0.9", features = ["component-db"] }
+vle-thermo = { version = "0.11", features = ["component-db"] }
 # Dense linear algebra for the (2C+1)×(2C+1) block-tridiagonal Jacobian blocks
 # (M8). Same major version vle uses.
 nalgebra = "0.33"

@@ -4,10 +4,12 @@ A staged-separation (distillation) learning library and fast steady-state column
 solver, built on [`vle-thermo`](https://pypi.org/project/vle-thermo/). Rust core,
 Python bindings, executable notebooks.
 
-> **Early-stage, first rung live.** v0.1.0 ships the McCabe–Thiele layer
-> (Milestone 1): real-thermo equilibrium curves, the full graphical
-> construction with tangent-pinch R_min detection, and the executable
-> `01-mccabe-thiele.ipynb`. Later rungs are still planned — see
+> **Early-stage, first two rungs live.** v0.2.0 ships the McCabe–Thiele
+> (Milestone 1) and Ponchon–Savarit (Milestone 2) binary layers: real-thermo
+> equilibrium and enthalpy–composition (H–x–y) curves, the full graphical
+> constructions (tangent-pinch R_min; difference-point energy balances), the
+> NRTL γ-φ model, and the executable `01-mccabe-thiele.ipynb` /
+> `02-ponchon-savarit.ipynb`. Later rungs are still planned — see
 > **[Status](#status)** and [ROADMAP.md](ROADMAP.md).
 
 ## About This Project
@@ -52,8 +54,8 @@ Rungs 1–3 are the "learning repo" ask; rungs 4–8 are the "solution engine" a
 
 ## Install
 
-> **Pre-1.0.** v0.1.0 is the first functional release (the McCabe–Thiele
-> binary layer). The API may still move before 1.0 — track progress in
+> **Pre-1.0.** v0.2.0 ships the McCabe–Thiele and Ponchon–Savarit binary
+> layers. The API may still move before 1.0 — track progress in
 > [ROADMAP.md](ROADMAP.md).
 
 ### Python (PyPI)
@@ -76,9 +78,9 @@ cargo add stages-thermo
 ```
 
 Both track the same version and build from the same source tree. `stages-thermo`
-depends on `vle-thermo` (crates.io / PyPI, ≥ 0.9) for all thermodynamics.
+depends on `vle-thermo` (crates.io / PyPI, ≥ 0.11) for all thermodynamics.
 
-## Quickstart — rung 1, shipping today
+## Quickstart — rungs 1–2, shipping today
 
 **Every method returns a rich, inspectable result object**, never bare numbers:
 
@@ -110,16 +112,18 @@ columns, the batch `solve_batch` layer) follow the same rich-result design; see
 
 ## Status
 
-**Milestones 0, 1, and 4 are complete** (v0.1.0): the McCabe–Thiele binary
-layer is live on top of vle-thermo 0.9.x, with the executable
-[`notebooks/01-mccabe-thiele.ipynb`](notebooks/01-mccabe-thiele.ipynb).
+**Milestones 0, 1, 2, and 4 are complete** (v0.2.0): the McCabe–Thiele and
+Ponchon–Savarit binary layers are live on top of vle-thermo 0.11.x, with the
+executable [`notebooks/01-mccabe-thiele.ipynb`](notebooks/01-mccabe-thiele.ipynb)
+and [`notebooks/02-ponchon-savarit.ipynb`](notebooks/02-ponchon-savarit.ipynb).
 
 | | State |
 |---|---|
 | M0 — Repo bootstrap | **Complete** (scaffold, CI, `0.0.1` stubs, docs split) |
 | M1 — Column model + McCabe–Thiele | **Complete — v0.1.0** (equilibrium curves, R_min/pinch, stage stepping, Murphree, N(R), staircase plots, 📓 01) |
-| M4 — Upstream vle-thermo derivative release | **Complete** (vle-thermo v0.9.1: `k_values_with_derivs`, γ-φ enthalpy, 24-compound Rust DB) |
-| M2–M3, M5–M10 — The remaining ladder → 1.0 | Pending |
+| M2 — Ponchon–Savarit | **Complete — v0.2.0** (H–x–y enthalpy curves, NRTL γ-φ + per-phase enthalpy adapter, difference-point construction, duties, 📓 02) |
+| M4 — Upstream vle-thermo derivative release | **Complete** (vle-thermo v0.11: NRTL + ammonia, `k_values_with_derivs`, γ-φ enthalpy, 25-compound Rust DB) |
+| M3, M5–M10 — The remaining ladder → 1.0 | Pending |
 | M11–M12 — Inside-out, MCP server *(stretch)* | Pending |
 
 Per-milestone detail and hour estimates: [ROADMAP.md](ROADMAP.md) and
@@ -140,8 +144,9 @@ with exact composition derivatives). stages-thermo:
   cibuildwheel CI, `_batch` + rayon + GIL-release pattern, criterion benches);
 - **pressure-tests vle-thermo's public API** — the gaps it surfaced (∂K/∂T,
   ∂H/∂T, packaged γ-φ enthalpy, an expanded Rust-side component DB) fed back
-  as vle-thermo's derivative release, **shipped as v0.9.x** (stages-thermo's
-  Milestone 4, complete); the engine now builds on `vle-thermo = "0.9"` with
+  as vle-thermo's derivative release (v0.9.x, stages-thermo's Milestone 4), and
+  the NRTL activity model + ammonia component (v0.11, needed for M2's
+  ammonia–water showcase); the engine now builds on `vle-thermo = "0.11"` with
   the `component-db` feature.
 
 There is **no Rust staged-column / MESH library on crates.io** — this is

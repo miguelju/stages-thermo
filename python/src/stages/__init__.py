@@ -8,17 +8,22 @@ come from ``vle-thermo``; this package adds none of its own.
 
 Status
 ------
-Milestone 1 (column model + McCabe–Thiele). The binary layer is live:
+Milestones 1–2 (column model + McCabe–Thiele + Ponchon–Savarit). The binary
+layer is live:
 
-- :class:`ThermoSystem` — Peng–Robinson (φ-φ) and van Laar (γ-φ) systems
-  over vle-thermo's component database.
+- :class:`ThermoSystem` — Peng–Robinson (φ-φ), van Laar and NRTL (γ-φ) systems
+  over vle-thermo's component database, plus per-phase molar enthalpies.
 - :class:`EquilibriumCurve` — the y*(x) curve from thermodynamics, from a
   constant relative volatility, or from raw data points.
+- :class:`EnthalpyCurve` — the enthalpy–composition (H–x–y) curve, computed
+  from a model or fed literature reference data.
 - :func:`mccabe_thiele`, :func:`rmin`, :func:`total_reflux`, :func:`n_vs_r`
   — the full McCabe–Thiele construction with pinch/R_min detection.
+- :func:`ponchon_savarit` — the energy-exact enthalpy–composition
+  construction (difference points, tie-line/pole-line stepping, duties).
 - :class:`BinaryColumn`, :class:`Feed` — the binary column model.
-- :mod:`stages.plotting` — the staircase diagram (needs matplotlib; install
-  the ``stages-thermo[plot]`` extra).
+- :mod:`stages.plotting` — the McCabe–Thiele staircase and the Ponchon–Savarit
+  H–x–y diagram (needs matplotlib; install the ``stages-thermo[plot]`` extra).
 
 Units: temperature K, pressure kPa (absolute), compositions are mole
 fractions of the *light* (more volatile) component, which is listed first.
@@ -43,17 +48,21 @@ from __future__ import annotations
 from stages._engine import (
     BinaryColumn,
     CondenserKind,
+    EnthalpyCurve,
     EquilibriumCurve,
     Feed,
     Line,
     McCabeThieleResult,
     McCabeThieleSpec,
+    PonchonSavaritResult,
+    PonchonSavaritSpec,
     RminResult,
     StagePoint,
     ThermoSystem,
     TotalRefluxResult,
     mccabe_thiele,
     n_vs_r,
+    ponchon_savarit,
     rmin,
     smoke_bubble_temperature,
     total_reflux,
@@ -71,11 +80,14 @@ except (ImportError, PackageNotFoundError):  # pragma: no cover
 __all__ = [
     "BinaryColumn",
     "CondenserKind",
+    "EnthalpyCurve",
     "EquilibriumCurve",
     "Feed",
     "Line",
     "McCabeThieleResult",
     "McCabeThieleSpec",
+    "PonchonSavaritResult",
+    "PonchonSavaritSpec",
     "RminResult",
     "StagePoint",
     "ThermoSystem",
@@ -83,6 +95,7 @@ __all__ = [
     "__version__",
     "mccabe_thiele",
     "n_vs_r",
+    "ponchon_savarit",
     "rmin",
     "smoke_bubble_temperature",
     "total_reflux",

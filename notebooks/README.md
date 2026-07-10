@@ -11,7 +11,7 @@ Planned (see `ROADMAP.md` for status):
 | Notebook | Milestone |
 |---|---|
 | [`01-mccabe-thiele.ipynb`](01-mccabe-thiele.ipynb) | **M1 — live** — benzene–toluene (PR), methanol–water (van Laar, ties to vle Ch. IV); 3 exercises |
-| `02-ponchon-savarit.ipynb` | M2 |
+| [`02-ponchon-savarit.ipynb`](02-ponchon-savarit.ipynb) | **M2 — live** — benzene–toluene consistency check, methanol–water CMO-error gap, ammonia–water NRTL-vs-reference two-route showcase; 2 exercises |
 | `03-shortcut-design.ipynb` | M3 — FUG depropanizer design |
 | `04-mesh-and-bubble-point.ipynb` | M6 — "how a column is actually solved," part 1 |
 | `05-absorbers-sum-rates.ipynb` | M7 |

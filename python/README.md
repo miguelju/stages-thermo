@@ -15,13 +15,15 @@ pip install stages-thermo           # import name is `stages`
 pip install "stages-thermo[plot]"   # + matplotlib for the staircase diagrams
 ```
 
-> **Status:** `0.1.x` ships the first rung of the ladder — the binary
-> McCabe–Thiele layer (Milestone 1): equilibrium curves from real
-> thermodynamics, minimum reflux by geometric pinch detection (tangent
-> pinches included), stage stepping with Murphree efficiency, total reflux,
-> N(R), staircase plotting, and the binary column material balances.
-> Multicomponent and rigorous MESH solvers land milestone by milestone — see
-> the repo's `ROADMAP.md`. The API may still move before `1.0`.
+> **Status:** `0.2.x` ships the first two rungs of the ladder — the binary
+> **McCabe–Thiele** (Milestone 1) and **Ponchon–Savarit** (Milestone 2) layers:
+> equilibrium and enthalpy–composition (H–x–y) curves from real thermodynamics,
+> minimum reflux by geometric pinch detection (tangent pinches included), stage
+> stepping with Murphree efficiency, total reflux, N(R), the energy-exact
+> difference-point construction (with condenser/reboiler duties), the NRTL γ-φ
+> model, per-phase enthalpies, and the diagram plots. Multicomponent and
+> rigorous MESH solvers land milestone by milestone — see the repo's
+> `ROADMAP.md`. The API may still move before `1.0`.
 
 ```python
 import stages
@@ -58,9 +60,27 @@ mw = stages.ThermoSystem.van_laar(["methanol", "water"], 0.5853, 0.3458)
 curve_mw = stages.EquilibriumCurve.from_thermo(mw, 101.325)
 ```
 
+Rung 2 — **Ponchon–Savarit** — closes the energy balance on the
+enthalpy–composition (H–x–y) diagram, so it also returns the condenser and
+reboiler duties (which McCabe–Thiele cannot):
+
+```python
+# H–x–y curve: saturated-liquid and -vapor enthalpies alongside y*(x).
+ec = stages.EnthalpyCurve.from_thermo(sys, 101.325)
+ps = stages.ponchon_savarit(ec, x_distillate=0.95, x_bottoms=0.05,
+                            z_feed=0.50, reflux=1.5)
+print(f"N = {ps.n_stages:.2f} stages, feed stage {ps.feed_stage}")
+print(f"Q_C/F = {ps.q_condenser:,.0f}, Q_R/F = {ps.q_reboiler:,.0f} kJ/kmol feed")
+ps.delta_d, ps.delta_b   # the two difference points (poles), (x, H) in kJ/kmol
+
+# NRTL for strongly non-ideal aqueous-organic systems (a12/a21 in kJ/kmol):
+aw = stages.ThermoSystem.nrtl(["ammonia", "water"], a12=-1800.0, a21=-1200.0, alpha=0.2)
+# from stages import plotting; plotting.plot_ponchon_savarit(ps, ec)
+```
+
 The executable learning path lives in the repo's `notebooks/` —
-`01-mccabe-thiele.ipynb` designs benzene–toluene and methanol–water columns
-end-to-end, with exercises.
+`01-mccabe-thiele.ipynb` and `02-ponchon-savarit.ipynb` design benzene–toluene,
+methanol–water, and ammonia–water columns end-to-end, with exercises.
 
 The native core is a Rust crate (`stages-thermo` on crates.io) with PyO3
 bindings; wheels are abi3 (`cp310-abi3-*`), so one wheel per (OS, arch) covers

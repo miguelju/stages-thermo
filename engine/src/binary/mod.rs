@@ -8,9 +8,11 @@
 
 pub mod equilibrium;
 pub mod mccabe_thiele;
+pub mod ponchon_savarit;
 
-pub use equilibrium::EquilibriumCurve;
+pub use equilibrium::{EnthalpyCurve, EquilibriumCurve};
 pub use mccabe_thiele::{
-    McCabeThieleResult, McCabeThieleSpec, RminResult, TotalRefluxResult, mccabe_thiele, n_vs_r,
-    rmin, total_reflux,
+    McCabeThieleResult, McCabeThieleSpec, RminResult, StagePoint, TotalRefluxResult, mccabe_thiele,
+    n_vs_r, rmin, total_reflux,
 };
+pub use ponchon_savarit::{PonchonSavaritResult, PonchonSavaritSpec, ponchon_savarit};
