@@ -56,6 +56,14 @@ Page numbers to be firmed up at citation time.
   Technology Research Bulletin 34, **1964**.
 - **Ibrahim, O. M.; Klein, S. A.** Thermodynamic properties of ammonia–water
   mixtures. *ASHRAE Trans.* **1993**, 99 (1), 1495. — the ASHRAE/EES formulation.
+- **Pátek, J.; Klomfar, J.** Simple functions for fast calculations of selected
+  thermodynamic properties of the ammonia–water system. *Int. J. Refrig.*
+  **1995**, 18 (4), 228–234. — five explicit correlations of the experimental
+  VLE + calorimetric data; **the digitized-points source for the route-(b)
+  reference chart** in `notebooks/02-ponchon-savarit.ipynb` (coefficient tables
+  transcribed into the notebook and verified against IAPWS/NIST pure-component
+  checkpoints; two published transcriptions of Table 5 differ in the 4th digit
+  of rows 9/13 — a < 4 kJ/kg effect, below the correlation's own fit scatter).
 - **Tillner-Roth, R.; Friend, D. G.** A Helmholtz free energy formulation of the
   thermodynamic properties of the mixture {water + ammonia}. *J. Phys. Chem. Ref.
   Data* **1998**, 27, 63.
@@ -79,13 +87,19 @@ Page numbers to be firmed up at citation time.
   are reproduced in `notebooks/01-mccabe-thiele.ipynb`.
 - **Perry's classic van Laar set** — ethanol(1)–water(2) A₁₂ = 1.6798,
   A₂₁ = 0.9227 (notebook exercise 1: azeotrope + tangent pinch).
+- **Acetone(1)–water(2) van Laar** — A₁₂ = 2.0400, A₂₁ = 1.5019, a
+  representative 1 atm fit (infinite-dilution activity coefficients ≈ 7.7 /
+  4.5, in the range reported for this system in the DECHEMA-family
+  compilations). Used for the CMO-design-failure worked example 3 in
+  `notebooks/02-ponchon-savarit.ipynb`; the lesson there depends only on the
+  latent-heat ratio, not on the precise activity fit.
 - **Ammonia–water NRTL (illustrative)** — NH₃(1)–H₂O(2) with `aij[0][1] = −1800`,
   `aij[1][0] = −1200` kJ/kmol (energy convention `gᵢⱼ − gⱼⱼ`) and α = 0.2
   (carried over from vle Milestone 14). Signs are physically correct (negative
   deviation, exothermic mixing); magnitudes are illustrative, not a certified
   regression — used for the route-(a) NRTL chart in
-  `notebooks/02-ponchon-savarit.ipynb`. The route-(b) reference chart uses
-  representative Bošnjaković/Ibrahim–Klein-style H–x–y data (see the notebook).
+  `notebooks/02-ponchon-savarit.ipynb`. The route-(b) reference chart is
+  digitized from the Pátek–Klomfar (1995) correlation (see above).
 
 ## Reference → code mapping
 

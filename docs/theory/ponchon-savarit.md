@@ -140,8 +140,12 @@ For a **near-ideal, equal-latent-heat** system (benzene–toluene) CMO is a good
 assumption, so the pole lines reproduce the straight CMO operating lines and the
 two methods return the same stage count — the M2 consistency check (they agree to
 within about a stage; the small residual gap *is* benzene–toluene's real CMO
-error, since its latent heats differ by a few percent). Where the heat of mixing
-is large the two diverge, and Ponchon–Savarit is the one that is right.
+error, since its latent heats differ by a few percent). Where the latent heats
+diverge or the heat of mixing is large the two part company, and Ponchon–Savarit
+is the one that is right — for acetone–water at design-heuristic reflux the CMO
+answer is 41% short on stages and calls an infeasible reflux feasible (notebook
+worked example 3; the full anatomy of the CMO assumption is in
+[mccabe-thiele.md §6](mccabe-thiele.md)).
 
 ---
 
@@ -209,10 +213,14 @@ molecules — so plain UNIQUAC is, if anything, slightly *less* flexible than NR
 here and no closer to the chart.
 
 **What actually would get closer,** in increasing order of effort: (1) feed the
-reference correlation's data (Ibrahim–Klein / Tillner-Roth) directly and run the
-pure graphical construction on it — matches the textbook chart, needs no new
-model; (2) implement *extended* UNIQUAC or a Helmholtz-energy EOS — the models
-that genuinely reproduce the chart, but each a large undertaking.
+reference correlation's data directly and run the pure graphical construction on
+it — matches the textbook chart, needs no new model — **which is what the
+notebook now does**, digitizing the chart from the Pátek–Klomfar (1995)
+correlation (*Int. J. Refrig.* 18(4), 228–234), five explicit functions fitted
+to the same experimental VLE + calorimetry behind the Bošnjaković and
+Ibrahim–Klein formulations; (2) implement *extended* UNIQUAC or a
+Helmholtz-energy EOS — the models that genuinely reproduce the chart, but each a
+large undertaking.
 
 **Why this project does not build the specialized models.** Their distinguishing
 capability serves nothing else on the roadmap. Extended UNIQUAC's
@@ -230,7 +238,15 @@ reference data rather than build single-use thermodynamics.
 
 **The two constructions in this notebook.** Route (a) computes the H–x–y diagram
 from NRTL and steps off stages — teaching how a chart is built from thermo, and
-showing the fray. Route (b) feeds reference enthalpy + VLE points through the
-enthalpy-augmented `from_points` path and runs the same construction —
-reproducing the textbook faithfully and cleanly separating the method from the
-thermo model. Shown side by side, the gap between them is the lesson.
+showing the fray. Route (b) digitizes the reference chart (Pátek–Klomfar
+correlation, verified against IAPWS/NIST pure-component checkpoints), feeds the
+points through the enthalpy-augmented `from_points` path, and runs the same
+construction — reproducing the textbook faithfully and cleanly separating the
+method from the thermo model. Shown side by side, the gap between them is the
+lesson — and it is not where intuition puts it: the **duties agree to about 1%**
+(the energy balance is dominated by pure-component latent heats, which both
+charts carry, and the construction is datum-invariant), while the **tie lines
+disagree** — the NRTL vapor line is too optimistic at the water-rich end
+($y^\ast = 0.64$ vs the reference 0.49 at $x = 0.05$), so the computed chart
+under-counts stages (2.46 vs 2.90) and misplaces the feed stage (1 vs 2). The
+model error lives in the VLE, not the enthalpies.

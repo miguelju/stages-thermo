@@ -46,9 +46,9 @@ assembly is wrapped (not re-derived) from vle-thermo's γ-φ / φ-φ enthalpy ro
 - [✓] **Adapter enthalpy + NRTL** (~3–4h) — `ThermoSystem::phase_enthalpy` wraps vle-thermo's `phase_enthalpy_entropy` (γ-φ = ideal − Clausius-Clapeyron + Hᴱ); `nrtl(names, a12, a21, alpha)` constructor (0.11's parallel `alpha` matrix); one reference state (`t_ref`/`p_ref`, PLAN §7)
 - [✓] **H–x–y diagram construction** (~2–3h) — `EnthalpyCurve` (`from_thermo` computes; `from_points` feeds reference enthalpy+VLE data)
 - [✓] **`binary/ponchon_savarit.rs`** (~3–4h) — difference points Δ_D/Δ_B, tie-line + pole-line stepping (mirrors `mccabe_thiele.rs`), per-mole-feed duties, mass + energy closure asserted
-- [✓] **Comparison** (~1h) — P–S vs M–T stage counts vs CMO error (benzene–toluene agree; methanol–water diverge; ammonia–water route-a-vs-b duty gap)
+- [✓] **Comparison** (~1h) — P–S vs M–T stage counts vs CMO error (benzene–toluene agree; methanol–water diverge; acetone–water CMO design failure — R_min 10% under, N 41% under at 1.2 R_min; ammonia–water route-a-vs-b: duties agree ~1%, tie lines differ)
 - [✓] **PyO3 bindings + plotting** — `nrtl`/`phase_enthalpy`/`EnthalpyCurve`/`ponchon_savarit`; `plot_hxy` + `plot_ponchon_savarit` (`_draw_hxy_frame`); Rust `engine/tests/m2_ponchon_savarit.rs` + `python/tests/test_ponchon_savarit.py`
-- [✓] **📓 `02-ponchon-savarit.ipynb`** (~2–3h) — 3 worked examples + 2 exercises with hidden solutions; pinned assertions; executes top-to-bottom
+- [✓] **📓 `02-ponchon-savarit.ipynb`** (~2–3h) — 4 worked examples + 2 exercises with hidden solutions; pinned assertions; executes top-to-bottom; route (b) digitized from the Pátek–Klomfar (1995) correlation (post-M2 upgrade from the earlier synthetic stand-in)
 
 ## Milestone 3: FUG Shortcut *(12–16 h)*
 

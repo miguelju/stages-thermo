@@ -80,7 +80,9 @@ aw = stages.ThermoSystem.nrtl(["ammonia", "water"], a12=-1800.0, a21=-1200.0, al
 
 The executable learning path lives in the repo's `notebooks/` —
 `01-mccabe-thiele.ipynb` and `02-ponchon-savarit.ipynb` design benzene–toluene,
-methanol–water, and ammonia–water columns end-to-end, with exercises.
+methanol–water, acetone–water, and ammonia–water columns end-to-end (the last
+on a reference chart digitized from the Pátek–Klomfar correlation), with
+exercises.
 
 The native core is a Rust crate (`stages-thermo` on crates.io) with PyO3
 bindings; wheels are abi3 (`cp310-abi3-*`), so one wheel per (OS, arch) covers
